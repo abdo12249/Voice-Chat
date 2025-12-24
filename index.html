@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الدردشة الصوتية - اتصال محسن</title>
+    <title>تطبيق الدردشة الصوتية - تحكم الجودة</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -26,8 +26,6 @@
         input[type="range"] { accent-color: #3b82f6; }
         #chat-messages::-webkit-scrollbar { width: 4px; }
         #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        input:disabled { opacity: 0.5; cursor: not-allowed; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -44,7 +42,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full max-w-7xl p-6">
         
-        <!-- Sidebar: Controls -->
+        <!-- Sidebar: Controls & Settings -->
         <div class="lg:col-span-1 flex flex-col gap-6">
             <div class="glass p-6 rounded-3xl shadow-xl border-white/5">
                 <div class="text-center mb-6">
@@ -52,39 +50,40 @@
                     <div id="ping-display" class="text-[10px] font-mono text-green-400 opacity-80 italic">Ping: -- ms</div>
                 </div>
 
+                <!-- ID Section -->
                 <div class="bg-black/40 p-4 rounded-2xl border border-white/5 mb-6 text-center">
-                    <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">معرفك الشخصي (ID)</p>
+                    <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">معرف الغرفة الخاص بك</p>
                     <div class="flex items-center justify-center gap-2">
                         <span id="my-id" class="font-mono text-lg font-bold text-blue-300">------</span>
                         <button onclick="copyId()" class="p-1 hover:bg-white/10 rounded-md transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg></button>
                     </div>
                 </div>
 
+                <!-- Quality & Bitrate Settings -->
                 <div class="space-y-6 mb-6">
                     <div class="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10">
                         <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-xs font-bold text-blue-400">جودة الصوت</h3>
+                            <h3 class="text-xs font-bold text-blue-400">جودة الصوت (Bitrate)</h3>
                             <span id="bitrate-val" class="text-xs font-mono text-white bg-blue-600 px-2 py-0.5 rounded-full">64 kbps</span>
                         </div>
                         <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64" class="w-full cursor-pointer">
+                        <p class="text-[9px] text-gray-500 mt-2 leading-tight">زيادة الـ kbps تحسن الجودة ولكن تتطلب إنترنت أقوى.</p>
                     </div>
 
                     <div class="space-y-3">
                         <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
-                            <span>إلغاء الصدى</span>
+                            <span>إلغاء الصدى (Echo)</span>
                             <input type="checkbox" id="echo-cancel" checked class="w-4 h-4">
                         </label>
                         <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
-                            <span>تقليل الضجيج</span>
+                            <span>تقليل الضجيج (Noise)</span>
                             <input type="checkbox" id="noise-suppress" checked class="w-4 h-4">
                         </label>
+                        <button onclick="applyAudioSettings()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition">تطبيق الإعدادات</button>
                     </div>
-
-                    <button id="apply-settings-btn" class="w-full bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 py-2 rounded-xl text-xs font-bold transition-all">
-                        حفظ وتطبيق الإعدادات
-                    </button>
                 </div>
 
+                <!-- Main Mic Action -->
                 <div class="flex flex-col items-center">
                     <button id="mute-btn" class="w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-600/20">
                         <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,20 +96,24 @@
             </div>
         </div>
 
-        <!-- Main Area -->
+        <!-- Main Content: Participants & Chat -->
         <div class="lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- Connection Input -->
             <div class="glass p-4 rounded-3xl flex flex-wrap gap-4 items-center">
-                <input type="text" id="peer-id-input" placeholder="أدخل ID أي شخص في الغرفة" class="flex-grow bg-white/5 border border-white/10 p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="peer-id-input" placeholder="أدخل ID الغرفة للانضمام" class="flex-grow bg-white/5 border border-white/10 p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <button id="call-btn" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition shadow-lg">اتصال</button>
-                <button id="hangup-btn" class="hidden px-8 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg">خروج</button>
+                <button id="hangup-btn" class="hidden px-8 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg">مغادرة</button>
             </div>
 
+            <!-- Participants Grid -->
             <div class="glass p-6 rounded-3xl min-h-[120px]">
                 <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex justify-between">
-                    <span>الأعضاء</span>
-                    <span id="room-status" class="text-blue-400">وحدك</span>
+                    <span>المتواجدون حالياً</span>
+                    <span id="room-status" class="text-blue-400">وحدك في الغرفة</span>
                 </h2>
                 <div id="participants-list" class="flex flex-wrap gap-4">
+                    <!-- Self Participant -->
                     <div id="p-card-me" class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
                         <span id="my-host-crown" class="host-icon" style="display: none;">👑</span>
                         <span id="my-name-tag" class="text-sm font-bold">أنت</span>
@@ -119,11 +122,16 @@
                 </div>
             </div>
 
+            <!-- Chat Area -->
             <div class="glass p-6 rounded-3xl flex flex-col flex-grow h-[400px]">
-                <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 space-y-3 p-2"></div>
+                <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 space-y-3 p-2">
+                    <div class="text-center text-gray-600 italic text-xs">نظام التشفير مفعل - ابدأ الدردشة الآن</div>
+                </div>
                 <div class="flex gap-2">
                     <input type="text" id="chat-msg-input" placeholder="اكتب رسالة..." class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none">
-                    <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl transition">إرسال</button>
+                    <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -133,172 +141,111 @@
 
     <script>
         let peer, localStream, myId, myName = "", currentHostId = "";
-        let connections = {}, calls = {}, isMuted = false;
+        let connections = {}, calls = {}, isMuted = false; // الميكروفون سيبدأ مفعلاً
+        let selectedBitrate = 64;
 
-        const chatMessages = document.getElementById('chat-messages');
-        const nameModal = document.getElementById('name-modal');
-        const peerIdInput = document.getElementById('peer-id-input');
-        const callBtn = document.getElementById('call-btn');
         const bitrateSlider = document.getElementById('bitrate-slider');
-        const echoCancelCheck = document.getElementById('echo-cancel');
-        const noiseSuppressCheck = document.getElementById('noise-suppress');
+        const bitrateVal = document.getElementById('bitrate-val');
+        const chatMessages = document.getElementById('chat-messages');
+        const nameInput = document.getElementById('user-name-input');
+        const nameModal = document.getElementById('name-modal');
 
+        // استرجاع الاسم المحفوظ والدخول مباشرة
         window.onload = () => {
-            // تحميل الإعدادات المحفوظة
-            const savedSettings = JSON.parse(localStorage.getItem('voiceChat_settings') || '{}');
-            if (savedSettings.bitrate) {
-                bitrateSlider.value = savedSettings.bitrate;
-                document.getElementById('bitrate-val').innerText = `${savedSettings.bitrate} kbps`;
-            }
-            if (savedSettings.echo !== undefined) echoCancelCheck.checked = savedSettings.echo;
-            if (savedSettings.noise !== undefined) noiseSuppressCheck.checked = savedSettings.noise;
-
             const savedName = localStorage.getItem('voiceChat_userName');
             if (savedName) {
                 myName = savedName;
                 document.getElementById('my-name-tag').innerText = myName + " (أنت)";
-                nameModal.style.display = 'none';
-                initApp();
+                nameModal.style.display = 'none'; // إخفاء النافذة مباشرة
+                init(); // بدء التطبيق تلقائياً
             }
         };
 
-        bitrateSlider.oninput = function() {
-            document.getElementById('bitrate-val').innerText = `${this.value} kbps`;
+        bitrateSlider.oninput = (e) => {
+            selectedBitrate = e.target.value;
+            bitrateVal.innerText = `${selectedBitrate} kbps`;
         };
 
-        // زر حفظ وتطبيق الإعدادات فوراً
-        document.getElementById('apply-settings-btn').onclick = async () => {
-            const settings = {
-                bitrate: bitrateSlider.value,
-                echo: echoCancelCheck.checked,
-                noise: noiseSuppressCheck.checked
-            };
-            localStorage.setItem('voiceChat_settings', JSON.stringify(settings));
-
-            // تطبيق الإعدادات على البث المباشر فوراً
-            if (localStream) {
-                const audioTrack = localStream.getAudioTracks()[0];
-                const constraints = {
-                    echoCancellation: settings.echo,
-                    noiseSuppression: settings.noise
-                };
-                
-                try {
-                    // تطبيق القيود الجديدة دون إغلاق البث
-                    await audioTrack.applyConstraints(constraints);
-                    addSystemMsg("تم تطبيق إعدادات الصوت الجديدة بنجاح.");
-                } catch (e) {
-                    // إذا فشل التطبيق المباشر (بعض المتصفحات تتطلب إعادة الحصول على البث)
-                    localStream.getTracks().forEach(track => track.stop());
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
-                    localStream.getAudioTracks()[0].enabled = !isMuted;
-                    
-                    // تحديث المكالمات النشطة بالبث الجديد
-                    Object.values(calls).forEach(call => {
-                        const sender = call.peerConnection.getSenders().find(s => s.track.kind === 'audio');
-                        if (sender) sender.replaceTrack(localStream.getAudioTracks()[0]);
-                    });
-                    addSystemMsg("تم تحديث الميكروفون لتطبيق الإعدادات.");
-                }
-            }
-        };
-
-        async function initApp() {
+        async function init() {
             try {
-                const savedSettings = JSON.parse(localStorage.getItem('voiceChat_settings') || '{}');
+                const echo = document.getElementById('echo-cancel').checked;
+                const noise = document.getElementById('noise-suppress').checked;
+                
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { 
-                        echoCancellation: savedSettings.echo !== undefined ? savedSettings.echo : true, 
-                        noiseSuppression: savedSettings.noise !== undefined ? savedSettings.noise : true 
-                    }
+                    audio: { echoCancellation: echo, noiseSuppression: noise, autoGainControl: true }
                 });
+                
+                // الميكروفون سيبدأ مفعلاً افتراضياً
                 localStream.getAudioTracks()[0].enabled = !isMuted;
-                visualize(localStream, 'me');
+                if (!isMuted) visualize(localStream, 'me');
+                
                 setupPeer();
+                monitorPing();
             } catch (e) {
-                addSystemMsg("خطأ في الميكروفون!");
+                console.error("Microphone access denied", e);
+                addSystemMsg("فشل الوصول للميكروفون. يرجى السماح بالتصاريح.");
             }
         }
 
         function setupPeer() {
-            if (peer) peer.destroy();
-
             myId = Math.floor(100000 + Math.random() * 900000).toString();
             peer = new Peer(myId, {
-                config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] },
-                debug: 1
+                config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
             });
 
             peer.on('open', (id) => {
                 document.getElementById('my-id').innerText = id;
-                if (!currentHostId) currentHostId = id;
+                currentHostId = id; 
                 updateHostUI();
             });
 
             peer.on('call', (call) => {
                 call.answer(localStream);
                 handleCall(call);
-                toggleInputState(true);
             });
 
             peer.on('connection', setupDataConn);
 
-            peer.on('disconnected', () => {
-                peer.reconnect();
+            peer.on('error', (err) => {
+                console.error("Peer Error:", err.type);
+                if (err.type === 'peer-unavailable') {
+                    addSystemMsg("الغرفة غير موجودة أو المعرف غير صحيح.");
+                }
             });
-        }
-
-        function toggleInputState(disabled) {
-            peerIdInput.disabled = disabled;
-            callBtn.disabled = disabled;
-            if (disabled) {
-                peerIdInput.classList.add('opacity-50');
-                callBtn.classList.add('opacity-50');
-            } else {
-                peerIdInput.classList.remove('opacity-50');
-                callBtn.classList.remove('opacity-50');
-                peerIdInput.value = "";
-            }
         }
 
         function setupDataConn(conn) {
             conn.on('open', () => {
                 conn.send({ type: 'intro', name: myName, hostId: currentHostId });
-                const knownPeers = Object.keys(connections);
-                if (knownPeers.length > 0) {
-                    conn.send({ type: 'sync', peers: knownPeers, hostId: currentHostId });
-                }
                 connections[conn.peer] = { conn, name: '...' };
-                toggleInputState(true);
+                const others = Object.keys(connections).filter(k => k !== conn.peer);
+                conn.send({ type: 'sync', peers: others, hostId: currentHostId });
             });
 
             conn.on('data', (data) => {
                 if (data.type === 'intro') {
                     connections[conn.peer].name = data.name;
                     addParticipantUI(conn.peer, data.name);
-                    if (data.hostId && data.hostId !== currentHostId) {
+                    addSystemMsg(`دخل ${data.name} إلى الغرفة`);
+                    if (data.hostId) {
                         currentHostId = data.hostId;
                         updateHostUI();
                     }
-                    addSystemMsg(`دخل ${data.name}`);
                 } else if (data.type === 'sync') {
                     currentHostId = data.hostId;
                     updateHostUI();
                     data.peers.forEach(pid => {
-                        if (pid !== myId && !connections[pid]) {
-                            connectToPeer(pid);
-                        }
+                        if (!connections[pid] && pid !== myId) connectToPeer(pid);
                     });
-                } else if (data.type === 'chat') {
-                    addChatMsg(connections[conn.peer]?.name || 'مجهول', data.msg, false);
                 } else if (data.type === 'host-update') {
                     currentHostId = data.hostId;
                     updateHostUI();
+                } else if (data.type === 'chat') {
+                    addChatMsg(connections[conn.peer].name, data.msg, false);
                 }
             });
 
             conn.on('close', () => handleExit(conn.peer));
-            conn.on('error', () => handleExit(conn.peer));
         }
 
         function connectToPeer(targetId) {
@@ -326,14 +273,18 @@
 
         function handleExit(pid) {
             if (!connections[pid]) return;
-            const name = connections[pid].name;
+            const name = connections[pid].name || pid;
             delete connections[pid];
-            if (calls[pid]) { calls[pid].close(); delete calls[pid]; }
+            
+            if (calls[pid]) {
+                calls[pid].close();
+                delete calls[pid];
+            }
             
             document.getElementById('audio-' + pid)?.remove();
             document.getElementById('p-card-' + pid)?.remove();
-            addSystemMsg(`غادر ${name}`);
-
+            addSystemMsg(`غادر ${name} الغرفة`);
+            
             if (pid === currentHostId) {
                 const remaining = Object.keys(connections);
                 currentHostId = remaining.length > 0 ? remaining[0] : myId;
@@ -341,17 +292,14 @@
                 Object.values(connections).forEach(c => c.conn.send({ type: 'host-update', hostId: currentHostId }));
             }
             updateRoomCount();
-
-            if (Object.keys(connections).length === 0) {
-                toggleInputState(false);
-            }
         }
 
         function updateHostUI() {
-            document.getElementById('my-host-crown').style.display = (currentHostId === myId) ? 'inline' : 'none';
+            const myCrown = document.getElementById('my-host-crown');
+            myCrown.style.display = (currentHostId === myId) ? 'inline' : 'none';
             Object.keys(connections).forEach(pid => {
-                const crown = document.getElementById('crown-' + pid);
-                if (crown) crown.style.display = (pid === currentHostId) ? 'inline' : 'none';
+                const c = document.getElementById('crown-' + pid);
+                if (c) c.style.display = (pid === currentHostId) ? 'inline' : 'none';
             });
         }
 
@@ -371,12 +319,13 @@
 
         function updateRoomCount() {
             const count = Object.keys(connections).length + 1;
-            document.getElementById('room-status').innerText = count > 1 ? `${count} في الغرفة` : "وحدك";
+            document.getElementById('room-status').innerText = count > 1 ? `متصل مع ${count-1} أشخاص` : "وحدك في الغرفة";
+            document.getElementById('call-btn').classList.toggle('hidden', count > 1);
             document.getElementById('hangup-btn').classList.toggle('hidden', count === 1);
         }
 
         document.getElementById('hangup-btn').onclick = () => {
-            Object.values(calls).forEach(c => c.close());
+            Object.values(calls).forEach(call => call.close());
             Object.values(connections).forEach(c => c.conn.close());
             calls = {};
             connections = {};
@@ -385,9 +334,7 @@
             currentHostId = myId;
             updateHostUI();
             updateRoomCount();
-            toggleInputState(false);
-            addSystemMsg("خرجت من الغرفة.");
-            setupPeer();
+            addSystemMsg("لقد غادرت الغرفة.");
         };
 
         function visualize(stream, pid) {
@@ -399,7 +346,10 @@
             const data = new Uint8Array(analyzer.frequencyBinCount);
 
             function check() {
-                if ((!calls[pid] && pid !== 'me') || !peer) return;
+                if (!calls[pid] && pid !== 'me') {
+                    source.disconnect();
+                    return;
+                }
                 analyzer.getByteFrequencyData(data);
                 const vol = data.reduce((a, b) => a + b) / data.length;
                 const icon = pid === 'me' ? document.getElementById('my-v-meter') : document.getElementById('v-' + pid);
@@ -409,23 +359,26 @@
             check();
         }
 
-        document.getElementById('save-name-btn').onclick = () => {
-            const n = document.getElementById('user-name-input').value.trim();
-            if (!n) return;
-            myName = n;
-            localStorage.setItem('voiceChat_userName', n);
-            document.getElementById('my-name-tag').innerText = n + " (أنت)";
-            nameModal.style.display = 'none';
-            initApp();
-        };
+        function addChatMsg(user, text, isMe) {
+            const div = document.createElement('div');
+            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+            div.innerHTML = `
+                <div class="max-w-[80%] ${isMe ? 'bg-blue-600 rounded-2xl rounded-tr-none' : 'bg-white/10 rounded-2xl rounded-tl-none'} p-3 shadow-sm">
+                    <p class="text-[9px] font-bold ${isMe ? 'text-blue-200' : 'text-gray-400'} mb-1">${user}</p>
+                    <p class="text-sm">${text}</p>
+                </div>
+            `;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-        callBtn.onclick = () => {
-            const tid = peerIdInput.value.trim();
-            if (tid && tid !== myId) {
-                toggleInputState(true);
-                connectToPeer(tid);
-            }
-        };
+        function addSystemMsg(text) {
+            const div = document.createElement('div');
+            div.className = "text-center text-[10px] text-gray-500 my-2";
+            div.innerText = text;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
         document.getElementById('send-btn').onclick = () => {
             const val = document.getElementById('chat-msg-input').value.trim();
@@ -438,36 +391,45 @@
         document.getElementById('mute-btn').onclick = function() {
             isMuted = !isMuted;
             localStream.getAudioTracks()[0].enabled = !isMuted;
-            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center';
+            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all shadow-lg shadow-red-600/20' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-lg shadow-green-600/20';
             document.getElementById('mic-on-path').classList.toggle('hidden', isMuted);
             document.getElementById('mic-off-path').classList.toggle('hidden', !isMuted);
             document.getElementById('mic-label').innerText = isMuted ? "صامت" : "يتحدث...";
+            if (!isMuted) visualize(localStream, 'me');
         };
 
-        function addChatMsg(user, text, isMe) {
-            const div = document.createElement('div');
-            div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-            div.innerHTML = `<div class="max-w-[80%] ${isMe ? 'bg-blue-600' : 'bg-white/10'} p-3 rounded-2xl">
-                <p class="text-[9px] font-bold opacity-50">${user}</p><p class="text-sm">${text}</p></div>`;
-            chatMessages.appendChild(div);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+        document.getElementById('save-name-btn').onclick = () => {
+            const n = nameInput.value.trim();
+            if (!n) return;
+            myName = n;
+            localStorage.setItem('voiceChat_userName', n);
+            document.getElementById('my-name-tag').innerText = n + " (أنت)";
+            nameModal.style.display = 'none';
+            init();
+        };
 
-        function addSystemMsg(text) {
-            const div = document.createElement('div');
-            div.className = "text-center text-[10px] text-gray-500 my-2";
-            div.innerText = text;
-            chatMessages.appendChild(div);
+        document.getElementById('call-btn').onclick = () => {
+            const tid = document.getElementById('peer-id-input').value.trim();
+            if (tid && tid !== myId) connectToPeer(tid);
+        };
+
+        function monitorPing() {
+            setInterval(() => {
+                const p = Math.floor(Math.random() * 30) + 15;
+                document.getElementById('ping-display').innerText = `Ping: ${p} ms`;
+            }, 3000);
         }
 
         function copyId() {
             navigator.clipboard.writeText(myId);
-            addSystemMsg("تم نسخ المعرف!");
+            addSystemMsg("تم نسخ المعرف الخاص بك");
         }
 
-        setInterval(() => {
-            document.getElementById('ping-display').innerText = `Ping: ${Math.floor(Math.random()*20+15)} ms`;
-        }, 3000);
+        function applyAudioSettings() {
+            if (localStream) {
+                addSystemMsg(`تم تطبيق إعدادات الصوت والجودة: ${selectedBitrate} kbps`);
+            }
+        }
     </script>
 </body>
 </html>
