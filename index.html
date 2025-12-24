@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الدردشة الصوتية - تحكم الجودة</title>
+    <title>تطبيق الدردشة الصوتية المطور</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -13,7 +13,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         body {
-            background: radial-gradient(circle at top right, #1e1e2f, #111119);
+            background: radial-gradient(circle at top right, #0f172a, #1e1e2f);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -24,6 +24,9 @@
         .host-icon { color: #f59e0b; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5)); }
         .is-speaking { color: #10b981; transform: scale(1.1); filter: drop-shadow(0 0 8px #10b981); }
         input[type="range"] { accent-color: #3b82f6; }
+        /* Disable input style */
+        input:disabled { opacity: 0.5; cursor: not-allowed; background: rgba(0,0,0,0.2); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
         #chat-messages::-webkit-scrollbar { width: 4px; }
         #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
@@ -31,12 +34,18 @@
 <body>
 
     <!-- Name Entry Modal -->
-    <div id="name-modal" class="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
-        <div class="glass p-8 rounded-3xl max-w-sm w-full text-center border-blue-500/30">
-            <h3 class="text-2xl font-bold mb-6 text-blue-400">مرحباً بك</h3>
-            <input type="text" id="user-name-input" placeholder="أدخل اسمك المستعار" class="w-full p-4 mb-6 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-white">
-            <button id="save-name-btn" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold transition-all transform active:scale-95">دخول الغرفة</button>
-            <p class="text-[10px] text-gray-500 mt-4 italic text-center">سيتم حفظ اسمك تلقائياً في هذا المتصفح</p>
+    <div id="name-modal" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-3xl max-w-sm w-full text-center border-blue-500/30 shadow-2xl shadow-blue-900/20">
+            <h3 class="text-2xl font-bold mb-2 text-blue-400">مرحباً بك</h3>
+            <p class="text-gray-400 text-sm mb-6">اضغط للدخول وتفعيل الميكروفون</p>
+            
+            <input type="text" id="user-name-input" placeholder="أدخل اسمك المستعار" class="w-full p-4 mb-4 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-white transition-all">
+            
+            <button id="save-name-btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 py-4 rounded-2xl font-bold transition-all transform active:scale-95 shadow-lg shadow-blue-600/20">
+                دخول الغرفة 🎤
+            </button>
+            
+            <p class="text-[10px] text-gray-500 mt-4 italic text-center">سيتم حفظ الاسم والمعرف الخاص بك تلقائياً</p>
         </div>
     </div>
 
@@ -44,9 +53,10 @@
         
         <!-- Sidebar: Controls & Settings -->
         <div class="lg:col-span-1 flex flex-col gap-6">
-            <div class="text-[20px] text-gray500 text-center mt4">
-    الإصدار: <span id="app-version">1.0.0</span>
-</div>
+            <div class="text-[20px] text-gray-500 text-center mt-4 font-mono opacity-50">
+                v2.0 Fixed
+            </div>
+            
             <div class="glass p-6 rounded-3xl shadow-xl border-white/5">
                 <div class="text-center mb-6">
                     <h1 class="text-xl font-bold text-blue-400 mb-1">لوحة التحكم</h1>
@@ -54,86 +64,98 @@
                 </div>
 
                 <!-- ID Section -->
-                <div class="bg-black/40 p-4 rounded-2xl border border-white/5 mb-6 text-center">
-                    <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">معرف الغرفة الخاص بك</p>
+                <div class="bg-black/40 p-4 rounded-2xl border border-white/5 mb-6 text-center group hover:border-blue-500/30 transition-colors">
+                    <p class="text-[10px] text-gray-400 mb-2 uppercase tracking-widest">معرف الغرفة (ثابت)</p>
                     <div class="flex items-center justify-center gap-2">
-                        <span id="my-id" class="font-mono text-lg font-bold text-blue-300">------</span>
-                        <button onclick="copyId()" class="p-1 hover:bg-white/10 rounded-md transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg></button>
+                        <span id="my-id" class="font-mono text-lg font-bold text-blue-300 tracking-wider">------</span>
+                        <button onclick="copyId()" class="p-2 hover:bg-white/10 rounded-lg transition text-gray-400 hover:text-white" title="نسخ">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Quality & Bitrate Settings -->
+                <!-- Audio Controls -->
                 <div class="space-y-6 mb-6">
                     <div class="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10">
                         <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-xs font-bold text-blue-400">جودة الصوت (Bitrate)</h3>
+                            <h3 class="text-xs font-bold text-blue-400">جودة الصوت</h3>
                             <span id="bitrate-val" class="text-xs font-mono text-white bg-blue-600 px-2 py-0.5 rounded-full">64 kbps</span>
                         </div>
-                        <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64" class="w-full cursor-pointer">
-                        <p class="text-[9px] text-gray-500 mt-2 leading-tight">زيادة الـ kbps تحسن الجودة ولكن تتطلب إنترنت أقوى.</p>
+                        <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64" class="w-full cursor-pointer h-1 bg-gray-700 rounded-lg appearance-none">
                     </div>
 
-                    <div class="space-y-3">
-                        <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
-                            <span>إلغاء الصدى (Echo)</span>
-                            <input type="checkbox" id="echo-cancel" checked class="w-4 h-4">
+                    <div class="space-y-2">
+                        <label class="flex items-center justify-between text-xs p-3 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10 transition">
+                            <span>🚫 إلغاء الصدى</span>
+                            <input type="checkbox" id="echo-cancel" checked class="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500">
                         </label>
-                        <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
-                            <span>تقليل الضجيج (Noise)</span>
-                            <input type="checkbox" id="noise-suppress" checked class="w-4 h-4">
+                        <label class="flex items-center justify-between text-xs p-3 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10 transition">
+                            <span>🔊 تقليل الضجيج</span>
+                            <input type="checkbox" id="noise-suppress" checked class="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500">
                         </label>
-                        <button onclick="applyAudioSettings()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition">تطبيق الإعدادات</button>
                     </div>
                 </div>
 
-                <!-- Main Mic Action -->
+                <!-- Mic Button -->
                 <div class="flex flex-col items-center">
-                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20">
-                        <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20 ring-4 ring-transparent hover:ring-white/10">
+                        <svg id="mic-icon" class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path id="mic-on-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                             <path id="mic-off-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
                         </svg>
                     </button>
-                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">صامت</span>
+                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">المايك مغلق</span>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content: Participants & Chat -->
+        <!-- Main Content -->
         <div class="lg:col-span-3 flex flex-col gap-6">
             
-            <!-- Connection Input -->
-            <div class="glass p-4 rounded-3xl flex flex-wrap gap-4 items-center">
-                <input type="text" id="peer-id-input" placeholder="أدخل ID الغرفة للانضمام" class="flex-grow bg-white/5 border border-white/10 p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="call-btn" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition shadow-lg">اتصال</button>
-                <button id="hangup-btn" class="hidden px-8 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg">مغادرة</button>
+            <!-- Connection Input (Locked when connected) -->
+            <div class="glass p-4 rounded-3xl flex flex-wrap gap-4 items-center shadow-lg relative overflow-hidden">
+                <div class="absolute inset-0 bg-blue-600/5 pointer-events-none"></div>
+                <input type="text" id="peer-id-input" placeholder="أدخل ID الغرفة للانضمام" class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg placeholder-gray-500">
+                <button id="call-btn" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition shadow-lg flex items-center gap-2">
+                    <span>اتصال</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                </button>
+                <button id="hangup-btn" class="hidden px-8 py-4 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg flex items-center gap-2">
+                    <span>مغادرة</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
 
             <!-- Participants Grid -->
-            <div class="glass p-6 rounded-3xl min-h-[120px]">
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex justify-between">
+            <div class="glass p-6 rounded-3xl min-h-[140px] relative">
+                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex justify-between items-center">
                     <span>المتواجدون حالياً</span>
-                    <span id="room-status" class="text-blue-400">وحدك في الغرفة</span>
+                    <span id="room-status" class="bg-white/5 px-3 py-1 rounded-full text-blue-400 text-[10px]">انتظار الاتصال...</span>
                 </h2>
                 <div id="participants-list" class="flex flex-wrap gap-4">
                     <!-- Self Participant -->
-                    <div id="p-card-me" class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
-                        <span id="my-host-crown" class="host-icon" style="display: none;">👑</span>
-                        <span id="my-name-tag" class="text-sm font-bold">أنت</span>
-                        <div id="my-v-meter" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                    <div id="p-card-me" class="flex items-center gap-3 bg-gradient-to-r from-blue-600/30 to-blue-600/10 px-5 py-3 rounded-2xl border border-blue-500/30">
+                        <span id="my-host-crown" class="host-icon text-lg" style="display: none;">👑</span>
+                        <div class="flex flex-col">
+                            <span id="my-name-tag" class="text-sm font-bold text-white">أنت</span>
+                            <span class="text-[9px] text-blue-300">مضيف</span>
+                        </div>
+                        <div id="my-v-meter" class="w-3 h-3 rounded-full bg-gray-600 transition-all ml-2"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Chat Area -->
-            <div class="glass p-6 rounded-3xl flex flex-col flex-grow h-[400px]">
-                <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 space-y-3 p-2">
-                    <div class="text-center text-gray-600 italic text-xs">نظام التشفير مفعل - ابدأ الدردشة الآن</div>
+            <div class="glass p-6 rounded-3xl flex flex-col flex-grow h-[450px]">
+                <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 space-y-3 p-2 custom-scrollbar">
+                    <div class="text-center bg-white/5 rounded-xl p-3 text-gray-400 italic text-xs mx-auto max-w-xs">
+                        نظام التشفير مفعل (End-to-End) <br> ابدأ الدردشة الآن
+                    </div>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="chat-msg-input" placeholder="اكتب رسالة..." class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none">
-                    <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    <input type="text" id="chat-msg-input" placeholder="اكتب رسالة..." class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all">
+                    <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl transition shadow-lg">
+                        <svg class="w-6 h-6 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                     </button>
                 </div>
             </div>
@@ -147,17 +169,50 @@
         let connections = {}, calls = {}, isMuted = true;
         let selectedBitrate = 64;
 
+        // عناصر الواجهة
         const bitrateSlider = document.getElementById('bitrate-slider');
         const bitrateVal = document.getElementById('bitrate-val');
         const chatMessages = document.getElementById('chat-messages');
         const nameInput = document.getElementById('user-name-input');
+        const saveNameBtn = document.getElementById('save-name-btn');
+        const peerInput = document.getElementById('peer-id-input');
+        const callBtn = document.getElementById('call-btn');
+        const hangupBtn = document.getElementById('hangup-btn');
 
-        // استرجاع الاسم المحفوظ عند تحميل الصفحة
+        // --- تهيئة التطبيق عند التحميل ---
         window.onload = () => {
+            // 1. استرجاع الاسم المحفوظ
             const savedName = localStorage.getItem('voiceChat_userName');
             if (savedName) {
                 nameInput.value = savedName;
+                saveNameBtn.innerHTML = `دخول باسم <b>${savedName}</b>`; // تغيير نص الزر
+                myName = savedName;
             }
+
+            // 2. استرجاع أو إنشاء ID ثابت
+            let savedId = localStorage.getItem('voiceChat_userId');
+            if (!savedId) {
+                // إنشاء ID عشوائي وتخزينه للأبد
+                savedId = Math.floor(100000 + Math.random() * 900000).toString();
+                localStorage.setItem('voiceChat_userId', savedId);
+            }
+            myId = savedId;
+            document.getElementById('my-id').innerText = myId;
+        };
+
+        // --- تشغيل التطبيق (بعد ضغط زر الدخول) ---
+        // ملاحظة: المتصفحات تطلب "تفاعل مستخدم" (نقر) لتشغيل الصوت، لذلك زر الدخول ضروري
+        saveNameBtn.onclick = async () => {
+            const n = nameInput.value.trim();
+            if (!n) return;
+            
+            myName = n;
+            localStorage.setItem('voiceChat_userName', n); // تحديث الاسم المحفوظ
+            
+            document.getElementById('my-name-tag').innerText = n + " (أنت)";
+            document.getElementById('name-modal').classList.add('hidden'); // إخفاء النافذة
+            
+            await init(); // بدء تشغيل المايك والاتصال
         };
 
         bitrateSlider.oninput = (e) => {
@@ -170,20 +225,28 @@
                 const echo = document.getElementById('echo-cancel').checked;
                 const noise = document.getElementById('noise-suppress').checked;
                 
+                // طلب صلاحية المايك
                 localStream = await navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: echo, noiseSuppression: noise, autoGainControl: true }
                 });
+                
+                // التأكد من أن المايك يعمل لكنه "صامت" في البداية
                 localStream.getAudioTracks()[0].enabled = false;
+                
                 setupPeer();
                 monitorPing();
+                addSystemMsg("تم تفعيل النظام الصوتي بنجاح. أنت جاهز.");
+                
             } catch (e) {
-                console.error("Microphone access denied", e);
-                addSystemMsg("فشل الوصول للميكروفون. يرجى السماح بالتصاريح.");
+                console.error("Microphone denied", e);
+                addSystemMsg("⚠️ فشل الوصول للميكروفون. تأكد من السماح بالصلاحيات.");
+                // إعادة إظهار النافذة إذا فشل
+                document.getElementById('name-modal').classList.remove('hidden');
             }
         }
 
         function setupPeer() {
-            myId = Math.floor(100000 + Math.random() * 900000).toString();
+            // استخدام الـ ID الثابت
             peer = new Peer(myId, {
                 config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
             });
@@ -199,12 +262,19 @@
                 handleCall(call);
             });
 
-            peer.on('connection', setupDataConn);
+            peer.on('connection', (conn) => {
+                setupDataConn(conn);
+                lockInput(true); // قفل عند استقبال اتصال
+            });
 
             peer.on('error', (err) => {
                 console.error("Peer Error:", err.type);
                 if (err.type === 'peer-unavailable') {
-                    addSystemMsg("الغرفة غير موجودة أو المعرف غير صحيح.");
+                    addSystemMsg("❌ الغرفة غير موجودة أو المعرف غير صحيح.");
+                    lockInput(false); // فتح القفل في حال الخطأ
+                } else if (err.type === 'unavailable-id') {
+                    // في حال كان الـ ID معلقاً (نادر الحدوث مع الحفظ)
+                    addSystemMsg("⚠️ المعرف مشغول حالياً، حاول تحديث الصفحة.");
                 }
             });
         }
@@ -215,6 +285,9 @@
                 connections[conn.peer] = { conn, name: '...' };
                 const others = Object.keys(connections).filter(k => k !== conn.peer);
                 conn.send({ type: 'sync', peers: others, hostId: currentHostId });
+                
+                // قفل المدخلات لأننا الآن متصلون
+                lockInput(true);
             });
 
             conn.on('data', (data) => {
@@ -245,10 +318,30 @@
 
         function connectToPeer(targetId) {
             if (connections[targetId]) return;
+            
+            // قفل فور بدء المحاولة
+            lockInput(true);
+            
             const conn = peer.connect(targetId);
             setupDataConn(conn);
             const call = peer.call(targetId, localStream);
             handleCall(call);
+        }
+
+        // دالة لقفل وفتح خانة الكتابة
+        function lockInput(locked) {
+            peerInput.disabled = locked;
+            callBtn.disabled = locked;
+            if (locked) {
+                callBtn.classList.add('hidden');
+                hangupBtn.classList.remove('hidden');
+                peerInput.placeholder = "متصل بالغرفة...";
+            } else {
+                callBtn.classList.remove('hidden');
+                hangupBtn.classList.add('hidden');
+                peerInput.placeholder = "أدخل ID الغرفة للانضمام";
+                peerInput.value = "";
+            }
         }
 
         function handleCall(call) {
@@ -306,7 +399,7 @@
             div.innerHTML = `
                 <span id="crown-${id}" class="host-icon" style="display:${id === currentHostId ? 'inline' : 'none'}">👑</span>
                 <span class="text-sm font-medium">${name}</span>
-                <div id="v-${id}" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                <div id="v-${id}" class="w-3 h-3 rounded-full bg-gray-600 transition-all"></div>
             `;
             document.getElementById('participants-list').appendChild(div);
             updateRoomCount();
@@ -314,12 +407,17 @@
 
         function updateRoomCount() {
             const count = Object.keys(connections).length + 1;
-            document.getElementById('room-status').innerText = count > 1 ? `متصل مع ${count-1} أشخاص` : "وحدك في الغرفة";
-            document.getElementById('call-btn').classList.toggle('hidden', count > 1);
-            document.getElementById('hangup-btn').classList.toggle('hidden', count === 1);
+            document.getElementById('room-status').innerText = count > 1 ? `متصل مع ${count-1}` : "وحدك في الغرفة";
+            
+            // إذا بقي المستخدم وحده، نفتح القفل ليتمكن من الاتصال بآخرين أو المغادرة الكاملة
+            if (count === 1) {
+               // لا نفتح القفل تلقائياً بالكامل، بل نترك زر المغادرة متاحاً لينهي الجلسة
+               // هذا الخيار للمستخدم: إما أن ينتظر أحداً يدخل عليه أو يضغط مغادرة ليكتب ID جديد
+            }
         }
 
-        document.getElementById('hangup-btn').onclick = () => {
+        // زر المغادرة
+        hangupBtn.onclick = () => {
             Object.values(calls).forEach(call => call.close());
             Object.values(connections).forEach(c => c.conn.close());
             calls = {};
@@ -329,7 +427,9 @@
             currentHostId = myId;
             updateHostUI();
             updateRoomCount();
+            
             addSystemMsg("لقد غادرت الغرفة.");
+            lockInput(false); // إعادة فتح الخانة
         };
 
         function visualize(stream, pid) {
@@ -342,13 +442,21 @@
 
             function check() {
                 if (!calls[pid] && pid !== 'me') {
-                    source.disconnect();
+                    // source.disconnect(); // قد يسبب مشاكل في المتصفح إذا تكرر، نتركه للـ garbage collector
                     return;
                 }
                 analyzer.getByteFrequencyData(data);
                 const vol = data.reduce((a, b) => a + b) / data.length;
+                
+                // تحديث المؤشر البصري
                 const icon = pid === 'me' ? document.getElementById('my-v-meter') : document.getElementById('v-' + pid);
-                if (icon) icon.className = vol > 15 ? 'w-4 h-4 is-speaking' : 'w-4 h-4 text-gray-500';
+                if (icon) {
+                    if (vol > 15) {
+                        icon.className = 'w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e] transition-all';
+                    } else {
+                        icon.className = 'w-3 h-3 rounded-full bg-gray-600 transition-all';
+                    }
+                }
                 requestAnimationFrame(check);
             }
             check();
@@ -358,9 +466,9 @@
             const div = document.createElement('div');
             div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
             div.innerHTML = `
-                <div class="max-w-[80%] ${isMe ? 'bg-blue-600 rounded-2xl rounded-tr-none' : 'bg-white/10 rounded-2xl rounded-tl-none'} p-3 shadow-sm">
+                <div class="max-w-[85%] ${isMe ? 'bg-blue-600 rounded-2xl rounded-tr-none' : 'bg-white/10 rounded-2xl rounded-tl-none'} p-3 shadow-sm">
                     <p class="text-[9px] font-bold ${isMe ? 'text-blue-200' : 'text-gray-400'} mb-1">${user}</p>
-                    <p class="text-sm">${text}</p>
+                    <p class="text-sm leading-relaxed">${text}</p>
                 </div>
             `;
             chatMessages.appendChild(div);
@@ -369,9 +477,12 @@
 
         function addSystemMsg(text) {
             const div = document.createElement('div');
-            div.className = "text-center text-[10px] text-gray-500 my-2";
+            div.className = "text-center text-[10px] text-gray-500 my-2 px-4 py-1 bg-white/5 rounded-full inline-block mx-auto";
             div.innerText = text;
-            chatMessages.appendChild(div);
+            const container = document.createElement('div'); // حاوية لمحاذاة الوسط
+            container.className = "text-center w-full";
+            container.appendChild(div);
+            chatMessages.appendChild(container);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
@@ -383,29 +494,30 @@
             document.getElementById('chat-msg-input').value = "";
         };
 
+        // زر المايك
         document.getElementById('mute-btn').onclick = function() {
+            if(!localStream) return;
             isMuted = !isMuted;
             localStream.getAudioTracks()[0].enabled = !isMuted;
-            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-green-600/20';
-            document.getElementById('mic-on-path').classList.toggle('hidden', isMuted);
-            document.getElementById('mic-off-path').classList.toggle('hidden', !isMuted);
-            document.getElementById('mic-label').innerText = isMuted ? "صامت" : "يتحدث...";
-            if (!isMuted) visualize(localStream, 'me');
+            
+            if (isMuted) {
+                this.className = 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105';
+                document.getElementById('mic-on-path').classList.add('hidden');
+                document.getElementById('mic-off-path').classList.remove('hidden');
+                document.getElementById('mic-label').innerText = "المايك مغلق";
+                document.getElementById('mic-label').className = "mt-3 text-xs font-bold text-red-400";
+            } else {
+                this.className = 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:scale-105';
+                document.getElementById('mic-on-path').classList.remove('hidden');
+                document.getElementById('mic-off-path').classList.add('hidden');
+                document.getElementById('mic-label').innerText = "أنت تتحدث";
+                document.getElementById('mic-label').className = "mt-3 text-xs font-bold text-green-400";
+                visualize(localStream, 'me');
+            }
         };
 
-        document.getElementById('save-name-btn').onclick = () => {
-            const n = nameInput.value.trim();
-            if (!n) return;
-            myName = n;
-            // حفظ الاسم في localStorage
-            localStorage.setItem('voiceChat_userName', n);
-            document.getElementById('my-name-tag').innerText = n + " (أنت)";
-            document.getElementById('name-modal').style.display = 'none';
-            init();
-        };
-
-        document.getElementById('call-btn').onclick = () => {
-            const tid = document.getElementById('peer-id-input').value.trim();
+        callBtn.onclick = () => {
+            const tid = peerInput.value.trim();
             if (tid && tid !== myId) connectToPeer(tid);
         };
 
@@ -418,14 +530,20 @@
 
         function copyId() {
             navigator.clipboard.writeText(myId);
-            addSystemMsg("تم نسخ المعرف الخاص بك");
+            const btn = document.querySelector('button[onclick="copyId()"]');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<span class="text-green-400 text-xs">تم!</span>`;
+            setTimeout(() => btn.innerHTML = originalHTML, 2000);
         }
 
-        function applyAudioSettings() {
-            if (localStream) {
-                addSystemMsg(`تم تطبيق إعدادات الصوت والجودة: ${selectedBitrate} kbps`);
-            }
-        }
+        // التعامل مع مفتاح Enter في خانة الاسم والشات
+        nameInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") saveNameBtn.click();
+        });
+        document.getElementById('chat-msg-input').addEventListener("keypress", function(event) {
+            if (event.key === "Enter") document.getElementById('send-btn').click();
+        });
+
     </script>
 </body>
 </html>
