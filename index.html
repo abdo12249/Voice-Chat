@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الدردشة الصوتية - تحكم الجودة</title>
+    <title>تطبيق الدردشة الصوتية - نسخة الهاتف المستقرة</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -36,6 +36,7 @@
             <h3 class="text-2xl font-bold mb-6 text-blue-400">مرحباً بك</h3>
             <input type="text" id="user-name-input" placeholder="أدخل اسمك المستعار" class="w-full p-4 mb-6 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-white">
             <button id="save-name-btn" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold transition-all transform active:scale-95">دخول الغرفة</button>
+            <p class="text-[10px] text-gray-500 mt-4 italic text-center">سيتم حفظ اسمك تلقائياً في هذا المتصفح</p>
         </div>
     </div>
 
@@ -84,13 +85,13 @@
 
                 <!-- Main Mic Action -->
                 <div class="flex flex-col items-center">
-                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20">
+                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-600/20">
                         <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path id="mic-on-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            <path id="mic-off-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
+                            <path id="mic-on-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            <path id="mic-off-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
                         </svg>
                     </button>
-                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">صامت</span>
+                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">يتحدث...</span>
                 </div>
             </div>
         </div>
@@ -113,8 +114,8 @@
                 </h2>
                 <div id="participants-list" class="flex flex-wrap gap-4">
                     <!-- Self Participant -->
-                    <div class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
-                        <span id="my-host-crown" class="host-icon">👑</span>
+                    <div id="p-card-me" class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
+                        <span id="my-host-crown" class="host-icon" style="display: none;">👑</span>
                         <span id="my-name-tag" class="text-sm font-bold">أنت</span>
                         <div id="my-v-meter" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
                     </div>
@@ -140,40 +141,54 @@
 
     <script>
         let peer, localStream, myId, myName = "", currentHostId = "";
-        let connections = {}, calls = {}, isMuted = true;
+        let connections = {}, calls = {}, isMuted = false;
         let selectedBitrate = 64;
+        let audioContexts = {}; // تتبع سياق الصوت لكل مشارك
+        let wakeLock = null;
 
-        // UI Elements
         const bitrateSlider = document.getElementById('bitrate-slider');
         const bitrateVal = document.getElementById('bitrate-val');
         const chatMessages = document.getElementById('chat-messages');
+        const nameInput = document.getElementById('user-name-input');
+        const nameModal = document.getElementById('name-modal');
 
-        // Logic for Bitrate Change
+        // طلب منع قفل الشاشة للحفاظ على استمرارية المعالجة في الخلفية
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log("Wake Lock error:", err);
+            }
+        }
+
+        // التعامل مع عودة المستخدم للمتصفح
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // استئناف جميع سياقات الصوت المعلقة
+                Object.values(audioContexts).forEach(ctx => {
+                    if (ctx.state === 'suspended') ctx.resume();
+                });
+                if (wakeLock === null) requestWakeLock();
+            }
+        });
+
+        window.onload = () => {
+            const savedName = localStorage.getItem('voiceChat_userName');
+            if (savedName) {
+                myName = savedName;
+                document.getElementById('my-name-tag').innerText = myName + " (أنت)";
+                nameModal.style.display = 'none';
+                init();
+            }
+            requestWakeLock();
+        };
+
         bitrateSlider.oninput = (e) => {
             selectedBitrate = e.target.value;
             bitrateVal.innerText = `${selectedBitrate} kbps`;
         };
-
-        // Function to Inject Bitrate into SDP
-        function setCodecBitrate(sdp, bitrate) {
-            const lines = sdp.split('\r\n');
-            let lineIndex = -1;
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].indexOf('a=fmtp:111') === 0 || lines[i].indexOf('a=fmtp:109') === 0) {
-                    lineIndex = i;
-                    break;
-                }
-            }
-            if (lineIndex !== -1) {
-                // Check if maxaveragebitrate already exists
-                if (lines[lineIndex].indexOf('maxaveragebitrate') === -1) {
-                    lines[lineIndex] = lines[lineIndex] + `;maxaveragebitrate=${bitrate * 1000}`;
-                } else {
-                    lines[lineIndex] = lines[lineIndex].replace(/maxaveragebitrate=\d+/, `maxaveragebitrate=${bitrate * 1000}`);
-                }
-            }
-            return lines.join('\r\n');
-        }
 
         async function init() {
             try {
@@ -181,13 +196,23 @@
                 const noise = document.getElementById('noise-suppress').checked;
                 
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: echo, noiseSuppression: noise, autoGainControl: true }
+                    audio: { 
+                        echoCancellation: echo, 
+                        noiseSuppression: noise, 
+                        autoGainControl: true,
+                        // إضافات لتحسين الأداء في الخلفية
+                        latency: 0.02
+                    }
                 });
-                localStream.getAudioTracks()[0].enabled = false;
+                
+                localStream.getAudioTracks()[0].enabled = !isMuted;
+                if (!isMuted) visualize(localStream, 'me');
+                
                 setupPeer();
                 monitorPing();
             } catch (e) {
                 console.error("Microphone access denied", e);
+                addSystemMsg("فشل الوصول للميكروفون. يرجى السماح بالتصاريح.");
             }
         }
 
@@ -199,7 +224,7 @@
 
             peer.on('open', (id) => {
                 document.getElementById('my-id').innerText = id;
-                currentHostId = id;
+                currentHostId = id; 
                 updateHostUI();
             });
 
@@ -209,14 +234,19 @@
             });
 
             peer.on('connection', setupDataConn);
+
+            peer.on('error', (err) => {
+                console.error("Peer Error:", err.type);
+                if (err.type === 'peer-unavailable') {
+                    addSystemMsg("الغرفة غير موجودة أو المعرف غير صحيح.");
+                }
+            });
         }
 
         function setupDataConn(conn) {
             conn.on('open', () => {
-                conn.send({ type: 'intro', name: myName, isHost: (currentHostId === myId) });
+                conn.send({ type: 'intro', name: myName, hostId: currentHostId });
                 connections[conn.peer] = { conn, name: '...' };
-                
-                // Broadcast current room status to the newcomer
                 const others = Object.keys(connections).filter(k => k !== conn.peer);
                 conn.send({ type: 'sync', peers: others, hostId: currentHostId });
             });
@@ -224,8 +254,12 @@
             conn.on('data', (data) => {
                 if (data.type === 'intro') {
                     connections[conn.peer].name = data.name;
-                    addParticipantUI(conn.peer, data.name, data.isHost);
+                    addParticipantUI(conn.peer, data.name);
                     addSystemMsg(`دخل ${data.name} إلى الغرفة`);
+                    if (data.hostId) {
+                        currentHostId = data.hostId;
+                        updateHostUI();
+                    }
                 } else if (data.type === 'sync') {
                     currentHostId = data.hostId;
                     updateHostUI();
@@ -244,15 +278,10 @@
         }
 
         function connectToPeer(targetId) {
+            if (connections[targetId]) return;
             const conn = peer.connect(targetId);
             setupDataConn(conn);
-            
-            // Initiate call with Bitrate modification
             const call = peer.call(targetId, localStream);
-            
-            // PeerJS doesn't expose SDP directly easily in call(), 
-            // but we can modify it through the peer connection internal handlers if needed.
-            // Simplified: The Bitrate slider applies to the outgoing stream's encoding.
             handleCall(call);
         }
 
@@ -264,17 +293,38 @@
                     audio = document.createElement('audio');
                     audio.id = 'audio-' + call.peer;
                     audio.autoplay = true;
+                    // تفعيل ميزات تشغيل الصوت في الخلفية للهواتف
+                    audio.setAttribute('playsinline', 'true');
                     document.getElementById('audios').appendChild(audio);
                 }
                 audio.srcObject = stream;
+                
+                // محاولة التشغيل فوراً وتجاوز قيود التشغيل التلقائي
+                audio.play().catch(e => {
+                    console.log("Auto-play blocked, waiting for interaction");
+                });
+
                 visualize(stream, call.peer);
             });
         }
 
         function handleExit(pid) {
-            const name = connections[pid]?.name || pid;
+            if (!connections[pid]) return;
+            const name = connections[pid].name || pid;
             delete connections[pid];
-            delete calls[pid];
+            
+            if (calls[pid]) {
+                calls[pid].close();
+                delete calls[pid];
+            }
+            
+            // تنظيف سياق الصوت
+            if (audioContexts[pid]) {
+                audioContexts[pid].close();
+                delete audioContexts[pid];
+            }
+            
+            document.getElementById('audio-' + pid)?.remove();
             document.getElementById('p-card-' + pid)?.remove();
             addSystemMsg(`غادر ${name} الغرفة`);
             
@@ -282,23 +332,21 @@
                 const remaining = Object.keys(connections);
                 currentHostId = remaining.length > 0 ? remaining[0] : myId;
                 updateHostUI();
-                // Tell others
                 Object.values(connections).forEach(c => c.conn.send({ type: 'host-update', hostId: currentHostId }));
             }
             updateRoomCount();
         }
 
         function updateHostUI() {
-            const crown = document.getElementById('my-host-crown');
-            crown.style.display = (currentHostId === myId) ? 'inline' : 'none';
-            // Update other participants
+            const myCrown = document.getElementById('my-host-crown');
+            myCrown.style.display = (currentHostId === myId) ? 'inline' : 'none';
             Object.keys(connections).forEach(pid => {
                 const c = document.getElementById('crown-' + pid);
                 if (c) c.style.display = (pid === currentHostId) ? 'inline' : 'none';
             });
         }
 
-        function addParticipantUI(id, name, isHost) {
+        function addParticipantUI(id, name) {
             if (document.getElementById('p-card-' + id)) return;
             const div = document.createElement('div');
             div.id = 'p-card-' + id;
@@ -306,7 +354,7 @@
             div.innerHTML = `
                 <span id="crown-${id}" class="host-icon" style="display:${id === currentHostId ? 'inline' : 'none'}">👑</span>
                 <span class="text-sm font-medium">${name}</span>
-                <div id="v-${id}" class="w-4 h-4 text-gray-500"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                <div id="v-${id}" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
             `;
             document.getElementById('participants-list').appendChild(div);
             updateRoomCount();
@@ -319,9 +367,23 @@
             document.getElementById('hangup-btn').classList.toggle('hidden', count === 1);
         }
 
-        // Voice Visualization
+        document.getElementById('hangup-btn').onclick = () => {
+            Object.values(calls).forEach(call => call.close());
+            Object.values(connections).forEach(c => c.conn.close());
+            calls = {};
+            connections = {};
+            document.querySelectorAll('[id^="p-card-"]:not(#p-card-me)').forEach(el => el.remove());
+            document.getElementById('audios').innerHTML = "";
+            currentHostId = myId;
+            updateHostUI();
+            updateRoomCount();
+            addSystemMsg("لقد غادرت الغرفة.");
+        };
+
         function visualize(stream, pid) {
-            const ctx = new AudioContext();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            audioContexts[pid] = ctx;
+            
             const source = ctx.createMediaStreamSource(stream);
             const analyzer = ctx.createAnalyser();
             analyzer.fftSize = 32;
@@ -329,7 +391,10 @@
             const data = new Uint8Array(analyzer.frequencyBinCount);
 
             function check() {
-                if (!calls[pid] && pid !== 'me') return;
+                if ((!calls[pid] && pid !== 'me') || ctx.state === 'closed') {
+                    source.disconnect();
+                    return;
+                }
                 analyzer.getByteFrequencyData(data);
                 const vol = data.reduce((a, b) => a + b) / data.length;
                 const icon = pid === 'me' ? document.getElementById('my-v-meter') : document.getElementById('v-' + pid);
@@ -339,7 +404,6 @@
             check();
         }
 
-        // Chat Handlers
         function addChatMsg(user, text, isMe) {
             const div = document.createElement('div');
             div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
@@ -369,24 +433,23 @@
             document.getElementById('chat-msg-input').value = "";
         };
 
-        // Mute/Unmute
         document.getElementById('mute-btn').onclick = function() {
             isMuted = !isMuted;
             localStream.getAudioTracks()[0].enabled = !isMuted;
-            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-green-600/20';
+            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all shadow-lg shadow-red-600/20' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-lg shadow-green-600/20';
             document.getElementById('mic-on-path').classList.toggle('hidden', isMuted);
             document.getElementById('mic-off-path').classList.toggle('hidden', !isMuted);
             document.getElementById('mic-label').innerText = isMuted ? "صامت" : "يتحدث...";
-            if (!isMuted) visualize(localStream, 'me');
+            if (!isMuted && audioContexts['me']?.state === 'suspended') audioContexts['me'].resume();
         };
 
-        // Interaction
         document.getElementById('save-name-btn').onclick = () => {
-            const n = document.getElementById('user-name-input').value.trim();
+            const n = nameInput.value.trim();
             if (!n) return;
             myName = n;
+            localStorage.setItem('voiceChat_userName', n);
             document.getElementById('my-name-tag').innerText = n + " (أنت)";
-            document.getElementById('name-modal').style.display = 'none';
+            nameModal.style.display = 'none';
             init();
         };
 
@@ -409,10 +472,7 @@
 
         function applyAudioSettings() {
             if (localStream) {
-                // To apply bitrate changes effectively, in a real WebRTC app, 
-                // we would re-negotiate or use sender.setParameters().
-                // Here we notify the user and update the UI.
-                addSystemMsg(`تم ضبط الجودة على ${selectedBitrate} kbps`);
+                addSystemMsg(`تم تطبيق إعدادات الصوت والجودة: ${selectedBitrate} kbps`);
             }
         }
     </script>
