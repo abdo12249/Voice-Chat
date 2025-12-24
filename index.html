@@ -53,7 +53,6 @@
             50% { transform: scale(1.5); opacity: 0.5; }
             100% { transform: scale(1); opacity: 1; }
         }
-        /* Custom Modal Styles */
         #custom-modal {
             display: none;
             position: fixed;
@@ -68,7 +67,6 @@
 </head>
 <body>
 
-    <!-- Custom Modal for Alerts/Confirmations -->
     <div id="custom-modal">
         <div class="glass p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl">
             <h3 id="modal-title" class="text-xl font-bold mb-4">تنبيه</h3>
@@ -81,7 +79,6 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
-        <!-- Right Side: Connection Controls -->
         <div class="glass p-6 rounded-2xl shadow-2xl flex flex-col justify-between">
             <div>
                 <h1 class="text-2xl font-bold mb-4 text-center text-blue-400">التحكم بالصوت</h1>
@@ -106,7 +103,7 @@
                 </div>
 
                 <div class="space-y-4">
-                    <input type="text" id="peer-id" placeholder="أدخل معرف الصديق" class="w-full p-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg">
+                    <input type="text" id="peer-id" placeholder="أدخل الـ 6 أرقام للصديق" class="w-full p-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg">
                     <button id="call-btn" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-xl font-bold text-lg transition shadow-lg flex items-center justify-center gap-2 active:scale-95">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -126,7 +123,6 @@
             </div>
         </div>
 
-        <!-- Left Side: Chat Messages -->
         <div class="glass p-6 rounded-2xl shadow-2xl flex flex-col h-[500px]">
             <h2 class="text-xl font-bold mb-4 border-b border-white/10 pb-2">الدردشة الكتابية</h2>
             <div id="chat-messages" class="flex-grow overflow-y-auto space-y-3 mb-4 p-2 text-sm flex flex-col">
@@ -143,7 +139,6 @@
         </div>
     </div>
 
-    <!-- Hidden audio element for remote stream -->
     <audio id="remote-audio" playsinline></audio>
 
     <script>
@@ -182,6 +177,11 @@
         const modalBody = document.getElementById('modal-body');
         const modalConfirm = document.getElementById('modal-confirm');
         const modalCancel = document.getElementById('modal-cancel');
+
+        function generateNumericID() {
+            // Generates a 6-digit random number string
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
 
         function showModal(title, body, onConfirm, onCancel = null) {
             modalTitle.innerText = title;
@@ -246,18 +246,11 @@
 
         function setupRemoteVisualizer(remoteStream) {
             ensureAudioContext().then(ctx => {
-                // Connect stream to context to ensure it's processed
                 const remoteSource = ctx.createMediaStreamSource(remoteStream);
-                
-                // Visualizer Setup
                 remoteAnalyser = ctx.createAnalyser();
                 remoteAnalyser.fftSize = 256;
                 remoteSource.connect(remoteAnalyser);
-                
-                // CRITICAL: Connecting to destination ensures the audio actually reaches the speakers
-                // when processed through the AudioContext.
                 remoteSource.connect(ctx.destination);
-
                 remoteDataArray = new Uint8Array(remoteAnalyser.frequencyBinCount);
                 
                 function monitorRemoteVoice() {
@@ -279,6 +272,7 @@
         }
 
         function setupPeer() {
+            const numericID = generateNumericID();
             const iceConfig = {
                 'iceServers': [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -287,7 +281,8 @@
                 ]
             };
 
-            peer = new Peer(undefined, { config: iceConfig, debug: 1 });
+            // Pass the generated 6-digit numericID to Peer constructor
+            peer = new Peer(numericID, { config: iceConfig, debug: 1 });
 
             peer.on('open', (id) => {
                 myIdDisplay.innerText = id;
@@ -314,6 +309,10 @@
 
             peer.on('error', (err) => {
                 if(err.type === 'peer-unavailable') showModal("خطأ", "هذا المعرف غير موجود.", null);
+                else if(err.type === 'unavailable-id') {
+                    // If ID is taken, try again
+                    setupPeer();
+                }
                 statusDisplay.innerText = "خطأ في الاتصال";
             });
         }
@@ -332,23 +331,16 @@
             currentCall = call;
             updateUI(true);
             call.on('stream', (remoteStream) => {
-                // Attach to audio element
                 remoteAudio.srcObject = remoteStream;
-                
-                // Use a direct play attempt
                 const playPromise = remoteAudio.play();
-                
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
                         resumeAudioBtn.innerText = "الصوت يعمل";
                         resumeAudioBtn.classList.replace('bg-blue-500', 'bg-green-600/50');
                     }).catch(error => {
-                        console.log("Autoplay prevented, showing manual play button");
                         resumeAudioBtn.classList.remove('hidden');
                     });
                 }
-
-                // Add to visualizer and AudioContext destination
                 setupRemoteVisualizer(remoteStream); 
             });
             call.on('close', endCall);
@@ -416,7 +408,7 @@
             temp.select();
             document.execCommand('copy');
             document.body.removeChild(temp);
-            showModal("نجاح", "تم نسخ المعرف", null);
+            showModal("نجاح", "تم نسخ المعرف: " + id, null);
         }
 
         muteBtn.onclick = () => {
