@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق الدردشة الصوتية - تحكم الجودة</title>
+    <title>تطبيق الدردشة الصوتية + شير سكرين</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -26,11 +26,28 @@
         input[type="range"] { accent-color: #3b82f6; }
         #chat-messages::-webkit-scrollbar { width: 4px; }
         #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        
+        /* تنسيق منطقة الفيديو */
+        #screen-share-area:empty { display: none; }
+        #screen-share-area video { 
+            width: 100%; 
+            max-height: 60vh; 
+            border-radius: 1rem; 
+            background: black; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Name Entry Modal -->
+    <div id="video-modal" class="fixed inset-0 bg-black/95 z-[90] hidden flex-col items-center justify-center p-4">
+        <div class="w-full max-w-6xl relative">
+            <button onclick="closeVideoModal()" class="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-bold z-50">إغلاق المشاهدة</button>
+            <div id="screen-share-container" class="w-full flex justify-center"></div>
+            <p id="screen-sharer-name" class="text-center mt-4 text-blue-400 font-bold text-xl"></p>
+        </div>
+    </div>
+
     <div id="name-modal" class="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
         <div class="glass p-8 rounded-3xl max-w-sm w-full text-center border-blue-500/30">
             <h3 class="text-2xl font-bold mb-6 text-blue-400">مرحباً بك</h3>
@@ -42,18 +59,16 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full max-w-7xl p-6">
         
-        <!-- Sidebar: Controls & Settings -->
         <div class="lg:col-span-1 flex flex-col gap-6">
             <div class="text-[20px] text-gray500 text-center mt4">
-    الإصدار: <span id="app-version">1.0.0</span>
-</div>
+                الإصدار: <span id="app-version">1.1.0</span>
+            </div>
             <div class="glass p-6 rounded-3xl shadow-xl border-white/5">
                 <div class="text-center mb-6">
                     <h1 class="text-xl font-bold text-blue-400 mb-1">لوحة التحكم</h1>
                     <div id="ping-display" class="text-[10px] font-mono text-green-400 opacity-80 italic">Ping: -- ms</div>
                 </div>
 
-                <!-- ID Section -->
                 <div class="bg-black/40 p-4 rounded-2xl border border-white/5 mb-6 text-center">
                     <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">معرف الغرفة الخاص بك</p>
                     <div class="flex items-center justify-center gap-2">
@@ -62,18 +77,29 @@
                     </div>
                 </div>
 
-                <!-- Quality & Bitrate Settings -->
-                <div class="space-y-6 mb-6">
-                    <div class="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-xs font-bold text-blue-400">جودة الصوت (Bitrate)</h3>
-                            <span id="bitrate-val" class="text-xs font-mono text-white bg-blue-600 px-2 py-0.5 rounded-full">64 kbps</span>
-                        </div>
-                        <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64" class="w-full cursor-pointer">
-                        <p class="text-[9px] text-gray-500 mt-2 leading-tight">زيادة الـ kbps تحسن الجودة ولكن تتطلب إنترنت أقوى.</p>
+                <div class="flex flex-col items-center gap-6">
+                    <div class="flex flex-col items-center">
+                        <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20">
+                            <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path id="mic-on-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                <path id="mic-off-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
+                            </svg>
+                        </button>
+                        <span id="mic-label" class="mt-2 text-xs font-bold text-gray-400">صامت</span>
                     </div>
 
-                    <div class="space-y-3">
+                    <div class="flex flex-col items-center">
+                        <button id="share-screen-btn" onclick="toggleScreenShare()" class="w-14 h-14 rounded-2xl bg-gray-700 flex items-center justify-center transition-all hover:scale-105 active:scale-95 border border-white/10">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                        <span id="screen-label" class="mt-2 text-[10px] font-bold text-gray-400">مشاركة الشاشة</span>
+                    </div>
+                </div>
+                
+                <div class="mt-6 border-t border-white/10 pt-4">
+                     <div class="space-y-3">
                         <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
                             <span>إلغاء الصدى (Echo)</span>
                             <input type="checkbox" id="echo-cancel" checked class="w-4 h-4">
@@ -86,37 +112,23 @@
                     </div>
                 </div>
 
-                <!-- Main Mic Action -->
-                <div class="flex flex-col items-center">
-                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20">
-                        <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path id="mic-on-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            <path id="mic-off-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
-                        </svg>
-                    </button>
-                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">صامت</span>
-                </div>
             </div>
         </div>
 
-        <!-- Main Content: Participants & Chat -->
         <div class="lg:col-span-3 flex flex-col gap-6">
             
-            <!-- Connection Input -->
             <div class="glass p-4 rounded-3xl flex flex-wrap gap-4 items-center">
                 <input type="text" id="peer-id-input" placeholder="أدخل ID الغرفة للانضمام" class="flex-grow bg-white/5 border border-white/10 p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <button id="call-btn" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition shadow-lg">اتصال</button>
                 <button id="hangup-btn" class="hidden px-8 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg">مغادرة</button>
             </div>
 
-            <!-- Participants Grid -->
             <div class="glass p-6 rounded-3xl min-h-[120px]">
                 <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 flex justify-between">
                     <span>المتواجدون حالياً</span>
                     <span id="room-status" class="text-blue-400">وحدك في الغرفة</span>
                 </h2>
                 <div id="participants-list" class="flex flex-wrap gap-4">
-                    <!-- Self Participant -->
                     <div id="p-card-me" class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
                         <span id="my-host-crown" class="host-icon" style="display: none;">👑</span>
                         <span id="my-name-tag" class="text-sm font-bold">أنت</span>
@@ -125,7 +137,6 @@
                 </div>
             </div>
 
-            <!-- Chat Area -->
             <div class="glass p-6 rounded-3xl flex flex-col flex-grow h-[400px]">
                 <div id="chat-messages" class="flex-grow overflow-y-auto mb-4 space-y-3 p-2">
                     <div class="text-center text-gray-600 italic text-xs">نظام التشفير مفعل - ابدأ الدردشة الآن</div>
@@ -146,23 +157,22 @@
         let peer, localStream, myId, myName = "", currentHostId = "";
         let connections = {}, calls = {}, isMuted = true;
         let selectedBitrate = 64;
+        
+        // متغيرات الشير سكرين
+        let screenStream = null;
+        let isSharingScreen = false;
+        let screenCalls = []; // لتخزين مكالمات مشاركة الشاشة
 
-        const bitrateSlider = document.getElementById('bitrate-slider');
-        const bitrateVal = document.getElementById('bitrate-val');
         const chatMessages = document.getElementById('chat-messages');
         const nameInput = document.getElementById('user-name-input');
+        const videoModal = document.getElementById('video-modal');
+        const screenContainer = document.getElementById('screen-share-container');
 
-        // استرجاع الاسم المحفوظ عند تحميل الصفحة
         window.onload = () => {
             const savedName = localStorage.getItem('voiceChat_userName');
             if (savedName) {
                 nameInput.value = savedName;
             }
-        };
-
-        bitrateSlider.oninput = (e) => {
-            selectedBitrate = e.target.value;
-            bitrateVal.innerText = `${selectedBitrate} kbps`;
         };
 
         async function init() {
@@ -194,7 +204,10 @@
                 updateHostUI();
             });
 
+            // استقبال المكالمات
             peer.on('call', (call) => {
+                // نرد دائماً بالصوت الخاص بنا لضمان استمرار الاتصال الصوتي
+                // لكن يجب أن نتحقق مما إذا كانت المكالمة القادمة "صوت" أم "فيديو"
                 call.answer(localStream);
                 handleCall(call);
             });
@@ -215,6 +228,12 @@
                 connections[conn.peer] = { conn, name: '...' };
                 const others = Object.keys(connections).filter(k => k !== conn.peer);
                 conn.send({ type: 'sync', peers: others, hostId: currentHostId });
+                
+                // إذا كنت أنا أشارك الشاشة، يجب أن أرسل البث لهذا الشخص الجديد
+                if(isSharingScreen && screenStream) {
+                    const call = peer.call(conn.peer, screenStream);
+                    screenCalls.push(call);
+                }
             });
 
             conn.on('data', (data) => {
@@ -237,6 +256,9 @@
                     updateHostUI();
                 } else if (data.type === 'chat') {
                     addChatMsg(connections[conn.peer].name, data.msg, false);
+                } else if (data.type === 'stop-screen') {
+                    // أمر إغلاق الشاشة من الطرف الآخر
+                    closeVideoModal();
                 }
             });
 
@@ -252,19 +274,112 @@
         }
 
         function handleCall(call) {
-            calls[call.peer] = call;
-            call.on('stream', (stream) => {
-                let audio = document.getElementById('audio-' + call.peer);
-                if (!audio) {
-                    audio = document.createElement('audio');
-                    audio.id = 'audio-' + call.peer;
-                    audio.autoplay = true;
-                    document.getElementById('audios').appendChild(audio);
+            calls[call.peer] = call; // قد يتم استبدال هذا إذا جاءت مكالمة ثانية من نفس الشخص
+            
+            call.on('stream', (remoteStream) => {
+                // التحقق مما إذا كان البث يحتوي على فيديو (شاشة)
+                if (remoteStream.getVideoTracks().length > 0) {
+                    // هذا بث شاشة
+                    displayRemoteScreen(remoteStream, call.peer);
+                } else {
+                    // هذا بث صوتي عادي
+                    let audio = document.getElementById('audio-' + call.peer);
+                    if (!audio) {
+                        audio = document.createElement('audio');
+                        audio.id = 'audio-' + call.peer;
+                        audio.autoplay = true;
+                        document.getElementById('audios').appendChild(audio);
+                    }
+                    audio.srcObject = remoteStream;
+                    visualize(remoteStream, call.peer);
                 }
-                audio.srcObject = stream;
-                visualize(stream, call.peer);
             });
         }
+
+        // --- وظائف مشاركة الشاشة ---
+
+        async function toggleScreenShare() {
+            const btn = document.getElementById('share-screen-btn');
+            const label = document.getElementById('screen-label');
+
+            if (!isSharingScreen) {
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: "always" },
+                        audio: false 
+                    });
+
+                    isSharingScreen = true;
+                    btn.classList.replace('bg-gray-700', 'bg-blue-500');
+                    label.innerText = "جاري المشاركة";
+                    label.classList.add('text-blue-400');
+
+                    // إرسال البث لجميع المتصلين
+                    Object.keys(connections).forEach(peerId => {
+                        const call = peer.call(peerId, screenStream);
+                        screenCalls.push(call);
+                    });
+
+                    addSystemMsg("لقد بدأت مشاركة الشاشة.");
+
+                    // عند إيقاف المشاركة من شريط المتصفح
+                    screenStream.getVideoTracks()[0].onended = () => {
+                        stopScreenShare();
+                    };
+
+                } catch (err) {
+                    console.error("Error sharing screen: " + err);
+                }
+            } else {
+                stopScreenShare();
+            }
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+            }
+            isSharingScreen = false;
+            
+            // تحديث واجهة الزر
+            const btn = document.getElementById('share-screen-btn');
+            const label = document.getElementById('screen-label');
+            btn.classList.replace('bg-blue-500', 'bg-gray-700');
+            label.innerText = "مشاركة الشاشة";
+            label.classList.remove('text-blue-400');
+
+            // إعلام الآخرين بإغلاق النافذة
+            Object.values(connections).forEach(c => c.conn.send({ type: 'stop-screen' }));
+            
+            screenCalls = [];
+            screenStream = null;
+            addSystemMsg("تم إيقاف مشاركة الشاشة.");
+        }
+
+        function displayRemoteScreen(stream, peerId) {
+            const senderName = connections[peerId] ? connections[peerId].name : "مستخدم";
+            
+            // إنشاء عنصر فيديو
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.controls = false;
+            
+            screenContainer.innerHTML = ""; // مسح أي شاشة قديمة
+            screenContainer.appendChild(video);
+            
+            document.getElementById('screen-sharer-name').innerText = `بث شاشة: ${senderName}`;
+            videoModal.classList.remove('hidden');
+            videoModal.classList.add('flex');
+        }
+
+        function closeVideoModal() {
+            videoModal.classList.add('hidden');
+            videoModal.classList.remove('flex');
+            screenContainer.innerHTML = "";
+        }
+
+        // --- نهاية وظائف الشاشة ---
 
         function handleExit(pid) {
             if (!connections[pid]) return;
@@ -320,6 +435,7 @@
         }
 
         document.getElementById('hangup-btn').onclick = () => {
+            if(isSharingScreen) stopScreenShare();
             Object.values(calls).forEach(call => call.close());
             Object.values(connections).forEach(c => c.conn.close());
             calls = {};
@@ -342,7 +458,7 @@
 
             function check() {
                 if (!calls[pid] && pid !== 'me') {
-                    source.disconnect();
+                    // source.disconnect(); // قد يسبب مشاكل في بعض المتصفحات عند إعادة الاتصال السريع
                     return;
                 }
                 analyzer.getByteFrequencyData(data);
@@ -397,7 +513,6 @@
             const n = nameInput.value.trim();
             if (!n) return;
             myName = n;
-            // حفظ الاسم في localStorage
             localStorage.setItem('voiceChat_userName', n);
             document.getElementById('my-name-tag').innerText = n + " (أنت)";
             document.getElementById('name-modal').style.display = 'none';
@@ -423,7 +538,7 @@
 
         function applyAudioSettings() {
             if (localStream) {
-                addSystemMsg(`تم تطبيق إعدادات الصوت والجودة: ${selectedBitrate} kbps`);
+                addSystemMsg(`تم تطبيق إعدادات الصوت`);
             }
         }
     </script>
