@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,57 +9,131 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
+
         body {
-            background: radial-gradient(circle at top right, #1e1e2f, #111119);
+            background: radial-gradient(circle at top right, #1e1e2f, #0d0d12);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+            overflow-x: hidden;
         }
-        .host-icon { color: #f59e0b; filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.5)); }
-        .is-speaking { color: #10b981; transform: scale(1.1); filter: drop-shadow(0 0 8px #10b981); }
-        input[type="range"] { accent-color: #3b82f6; }
-        #chat-messages::-webkit-scrollbar { width: 4px; }
-        #chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .host-icon {
+            color: #f59e0b;
+            filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+        }
+
+        .is-speaking {
+            color: #10b981;
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 12px #10b981);
+            animation: pulse-green 1.5s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .participant-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .participant-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="range"] {
+            accent-color: #3b82f6;
+        }
+
+        #chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #chat-messages::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .new-entry {
+            animation: slide-in 0.5s ease-out;
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
     </style>
 </head>
+
 <body>
 
     <!-- Name Entry Modal -->
     <div id="name-modal" class="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
         <div class="glass p-8 rounded-3xl max-w-sm w-full text-center border-blue-500/30">
             <h3 class="text-2xl font-bold mb-6 text-blue-400">مرحباً بك</h3>
-            <input type="text" id="user-name-input" placeholder="أدخل اسمك المستعار" class="w-full p-4 mb-6 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-white">
-            <button id="save-name-btn" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold transition-all transform active:scale-95">دخول الغرفة</button>
+            <input type="text" id="user-name-input" placeholder="أدخل اسمك المستعار"
+                class="w-full p-4 mb-6 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-white">
+            <button id="save-name-btn"
+                class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-2xl font-bold transition-all transform active:scale-95">دخول
+                الغرفة</button>
             <p class="text-[10px] text-gray-500 mt-4 italic text-center">سيتم حفظ اسمك تلقائياً في هذا المتصفح</p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full max-w-7xl p-6">
-        
+
         <!-- Sidebar: Controls & Settings -->
         <div class="lg:col-span-1 flex flex-col gap-6">
             <div class="text-[20px] text-gray500 text-center mt4">
-    الإصدار: <span id="app-version">1.0.0</span>
-</div>
+                الإصدار: <span id="app-version">1.0.0</span>
+            </div>
             <div class="glass p-6 rounded-3xl shadow-xl border-white/5">
                 <div class="text-center mb-6">
                     <h1 class="text-xl font-bold text-blue-400 mb-1">لوحة التحكم</h1>
-                    <div id="ping-display" class="text-[10px] font-mono text-green-400 opacity-80 italic">Ping: -- ms</div>
+                    <div id="ping-display" class="text-[10px] font-mono text-green-400 opacity-80 italic">Ping: -- ms
+                    </div>
                 </div>
 
-                <!-- ID Section -->
+                <!-- Room & Sharing Section -->
                 <div class="bg-black/40 p-4 rounded-2xl border border-white/5 mb-6 text-center">
-                    <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">معرف الغرفة الخاص بك</p>
+                    <p class="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">اسم الغرفة أو الرابط</p>
                     <div class="flex items-center justify-center gap-2">
-                        <span id="my-id" class="font-mono text-lg font-bold text-blue-300">------</span>
-                        <button onclick="copyId()" class="p-1 hover:bg-white/10 rounded-md transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg></button>
+                        <span id="my-room-name" class="font-mono text-sm font-bold text-blue-300">لم تحدد بعد</span>
+                        <button onclick="copyRoomLink()"
+                            class="p-2 hover:bg-blue-500/20 text-blue-400 rounded-xl transition flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            <span class="text-[10px]">مشاركة</span>
+                        </button>
                     </div>
                 </div>
 
@@ -67,46 +142,147 @@
                     <div class="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10">
                         <div class="flex justify-between items-center mb-2">
                             <h3 class="text-xs font-bold text-blue-400">جودة الصوت (Bitrate)</h3>
-                            <span id="bitrate-val" class="text-xs font-mono text-white bg-blue-600 px-2 py-0.5 rounded-full">64 kbps</span>
+                            <span id="bitrate-val"
+                                class="text-xs font-mono text-white bg-blue-600 px-2 py-0.5 rounded-full">64 kbps</span>
                         </div>
-                        <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64" class="w-full cursor-pointer">
-                        <p class="text-[9px] text-gray-500 mt-2 leading-tight">زيادة الـ kbps تحسن الجودة ولكن تتطلب إنترنت أقوى.</p>
+                        <input type="range" id="bitrate-slider" min="16" max="256" step="16" value="64"
+                            class="w-full cursor-pointer">
+                        <p class="text-[9px] text-gray-500 mt-2 leading-tight">زيادة الـ kbps تحسن الجودة ولكن تتطلب
+                            إنترنت أقوى.</p>
                     </div>
 
                     <div class="space-y-3">
-                        <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
+                        <label
+                            class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
                             <span>إلغاء الصدى (Echo)</span>
                             <input type="checkbox" id="echo-cancel" checked class="w-4 h-4">
                         </label>
-                        <label class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
+                        <label
+                            class="flex items-center justify-between text-xs p-2 bg-white/5 rounded-xl border border-white/5 cursor-pointer">
                             <span>تقليل الضجيج (Noise)</span>
                             <input type="checkbox" id="noise-suppress" checked class="w-4 h-4">
                         </label>
-                        <button onclick="applyAudioSettings()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition">تطبيق الإعدادات</button>
+                        <button onclick="applyAudioSettings()"
+                            class="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition">تطبيق
+                            الإعدادات</button>
                     </div>
+                </div>
+
+                <!-- Screen Share Settings -->
+                <div class="bg-purple-500/5 p-4 rounded-2xl border border-purple-500/10 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-bold text-purple-400">إعدادات مشاركة الشاشة</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] text-gray-400">الدقة</span>
+                            <select id="screen-res"
+                                class="bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                <option value="720">720p (HD)</option>
+                                <option value="1080" selected>1080p (FHD)</option>
+                                <option value="1440">2K</option>
+                                <option value="2160">4K</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] text-gray-400">الـ FPS</span>
+                            <select id="screen-fps"
+                                class="bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] focus:outline-none focus:ring-1 focus:ring-purple-500">
+                                <option value="15">15 FPS</option>
+                                <option value="30" selected>30 FPS</option>
+                                <option value="60">60 FPS</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="screen-share-btn"
+                        class="w-full py-3 bg-purple-600 hover:bg-purple-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span>مشارکة الشاشة</span>
+                    </button>
                 </div>
 
                 <!-- Main Mic Action -->
                 <div class="flex flex-col items-center">
-                    <button id="mute-btn" class="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20">
-                        <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path id="mic-on-path" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            <path id="mic-off-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
+                    <button id="mute-btn"
+                        class="w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-600/40">
+                        <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path id="mic-on-path" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            <path id="mic-off-path" class="hidden" stroke-linecap="round" stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728A9 9 0 015.636 5.636" />
                         </svg>
                     </button>
-                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">صامت</span>
+                    <span id="mic-label" class="mt-3 text-xs font-bold text-gray-400">يتحدث...</span>
                 </div>
             </div>
         </div>
 
         <!-- Main Content: Participants & Chat -->
         <div class="lg:col-span-3 flex flex-col gap-6">
-            
-            <!-- Connection Input -->
-            <div class="glass p-4 rounded-3xl flex flex-wrap gap-4 items-center">
-                <input type="text" id="peer-id-input" placeholder="أدخل ID الغرفة للانضمام" class="flex-grow bg-white/5 border border-white/10 p-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="call-btn" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition shadow-lg">اتصال</button>
-                <button id="hangup-btn" class="hidden px-8 py-3 bg-red-600 hover:bg-red-700 rounded-2xl font-bold transition shadow-lg">مغادرة</button>
+
+            <!-- Room Actions -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Create Room Section -->
+                <div class="glass p-6 rounded-3xl flex flex-col gap-4 border-blue-500/20">
+                    <h3 class="text-sm font-bold text-blue-400 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        إنشاء غرفتك الخاصة
+                    </h3>
+                    <div class="flex flex-col gap-3">
+                        <input type="text" id="create-room-input" placeholder="اكتب اسم غرفتك (مثلاً: abdo-room)"
+                            class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500 font-bold transition-all">
+                        <button id="create-btn"
+                            class="w-full py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition-all shadow-lg hover:shadow-blue-600/40 active:scale-95">
+                            بدء الغرفة كـ Host
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Join Room Section -->
+                <div class="glass p-6 rounded-3xl flex flex-col gap-4 border-green-500/20">
+                    <h3 class="text-sm font-bold text-green-400 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        الانضمام لغرفة صديق
+                    </h3>
+                    <div class="flex flex-col gap-3">
+                        <input type="text" id="join-room-input" placeholder="ادخل اسم غرفة صديقك"
+                            class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 text-white placeholder-gray-500 font-bold transition-all">
+                        <button id="join-btn"
+                            class="w-full py-4 bg-green-600 hover:bg-green-700 rounded-2xl font-bold transition-all shadow-lg hover:shadow-green-600/40 active:scale-95">
+                            دخول الغرفة الآن
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Connection Status (Hidden until connected) -->
+            <div id="active-connection-panel"
+                class="hidden glass p-4 rounded-3xl flex items-center justify-between border-blue-500/40 bg-blue-500/10 animate-pulse">
+                <div class="flex items-center gap-3">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span class="text-xs font-bold">متصل حالياً بالغرفة: <span id="active-room-display"
+                            class="text-blue-400">---</span></span>
+                </div>
+                <button id="hangup-btn"
+                    class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-xs transition-all active:scale-95">
+                    إنهاء الاتصال / مغادرة
+                </button>
+            </div>
+
+            <!-- Video Grid for Screen Sharing -->
+            <div id="video-grid" class="hidden grid grid-cols-1 gap-4">
+                <!-- Shared screens will appear here -->
             </div>
 
             <!-- Participants Grid -->
@@ -117,10 +293,15 @@
                 </h2>
                 <div id="participants-list" class="flex flex-wrap gap-4">
                     <!-- Self Participant -->
-                    <div id="p-card-me" class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30">
-                        <span id="my-host-crown" class="host-icon" style="display: none;">👑</span>
+                    <div id="p-card-me"
+                        class="flex items-center gap-3 bg-blue-600/20 px-4 py-3 rounded-2xl border border-blue-600/30 transition-all duration-300">
+                        <span id="my-host-crown" class="host-icon animate-bounce" style="display: none;">👑</span>
                         <span id="my-name-tag" class="text-sm font-bold">أنت</span>
-                        <div id="my-v-meter" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                        <div id="my-v-meter" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path
+                                    d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" />
+                            </svg></div>
                     </div>
                 </div>
             </div>
@@ -131,9 +312,13 @@
                     <div class="text-center text-gray-600 italic text-xs">نظام التشفير مفعل - ابدأ الدردشة الآن</div>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="chat-msg-input" placeholder="اكتب رسالة..." class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none">
+                    <input type="text" id="chat-msg-input" placeholder="اكتب رسالة..."
+                        class="flex-grow bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none">
                     <button id="send-btn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-2xl transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -143,20 +328,29 @@
     <div id="audios" class="hidden"></div>
 
     <script>
-        let peer, localStream, myId, myName = "", currentHostId = "";
-        let connections = {}, calls = {}, isMuted = true;
-        let selectedBitrate = 64;
+        let peer, localStream, screenStream, myId, myName = "", currentHostId = "", currentRoom = "";
+        let connections = {}, calls = {}, isMuted = false, isScreenSharing = false;
+        let selectedBitrate = 128; // default to 128 for better quality on start
 
         const bitrateSlider = document.getElementById('bitrate-slider');
         const bitrateVal = document.getElementById('bitrate-val');
         const chatMessages = document.getElementById('chat-messages');
         const nameInput = document.getElementById('user-name-input');
+        const createRoomInput = document.getElementById('create-room-input');
+        const joinRoomInput = document.getElementById('join-room-input');
+
+        // استخراج الغرفة من الرابط إذا وجدت
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomFromUrl = urlParams.get('room');
 
         // استرجاع الاسم المحفوظ عند تحميل الصفحة
         window.onload = () => {
             const savedName = localStorage.getItem('voiceChat_userName');
             if (savedName) {
                 nameInput.value = savedName;
+            }
+            if (roomFromUrl) {
+                joinRoomInput.value = roomFromUrl;
             }
         };
 
@@ -165,16 +359,25 @@
             bitrateVal.innerText = `${selectedBitrate} kbps`;
         };
 
-        async function init() {
+        async function init(customId = null) {
             try {
+                if (peer) peer.destroy(); // تنظيف البير القديم إذا وجد
+
                 const echo = document.getElementById('echo-cancel').checked;
                 const noise = document.getElementById('noise-suppress').checked;
-                
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: { echoCancellation: echo, noiseSuppression: noise, autoGainControl: true }
-                });
-                localStream.getAudioTracks()[0].enabled = false;
-                setupPeer();
+
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: echo, noiseSuppression: noise, autoGainControl: true }
+                    });
+                    // الميكروفون شغال تلقائياً
+                    localStream.getAudioTracks()[0].enabled = !isMuted;
+                    updateMuteUI();
+
+                    // تقنية لمنع توقف الصوت في الخلفية على الهواتف
+                    setupBackgroundAudioFix();
+                }
+                setupPeer(customId);
                 monitorPing();
             } catch (e) {
                 console.error("Microphone access denied", e);
@@ -182,16 +385,41 @@
             }
         }
 
-        function setupPeer() {
-            myId = Math.floor(100000 + Math.random() * 900000).toString();
+        function setupPeer(customId) {
+            // إذا كان المستخدم Host يستخدم اسمه كـ ID، وإلا يستخدم ID عشوائي
+            myId = customId || 'user-' + Math.random().toString(36).substr(2, 9);
+
             peer = new Peer(myId, {
-                config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ],
+                    'sdpSemantics': 'unified-plan'
+                },
+                debug: 1
             });
 
             peer.on('open', (id) => {
-                document.getElementById('my-id').innerText = id;
-                currentHostId = id; 
-                updateHostUI();
+                myId = id;
+                console.log('My peer ID is: ' + id);
+                if (customId) {
+                    currentRoom = id;
+                    document.getElementById('my-room-name').innerText = id;
+                    document.getElementById('active-room-display').innerText = id;
+                    document.getElementById('active-connection-panel').classList.remove('hidden');
+                    currentHostId = id;
+                    updateHostUI();
+                    addSystemMsg(`تم إنشاء الغرفة بنجاح: ${id}`);
+                }
+                if (roomFromUrl && !customId) {
+                    addSystemMsg(`جاري الانضمام تلقائياً للغرفة من الرابط...`);
+                    connectToPeer(roomFromUrl);
+                }
             });
 
             peer.on('call', (call) => {
@@ -202,9 +430,11 @@
             peer.on('connection', setupDataConn);
 
             peer.on('error', (err) => {
-                console.error("Peer Error:", err.type);
+                console.error("Peer Error:", err.type, err);
                 if (err.type === 'peer-unavailable') {
-                    addSystemMsg("الغرفة غير موجودة أو المعرف غير صحيح.");
+                    addSystemMsg("لم نتمكن من العثور على الطرف الآخر. تأكد من صحة الاسم.");
+                } else if (err.type === 'network') {
+                    addSystemMsg("مشكلة في الشبكة. يرجى التأكد من اتصالك.");
                 }
             });
         }
@@ -220,11 +450,56 @@
             conn.on('data', (data) => {
                 if (data.type === 'intro') {
                     connections[conn.peer].name = data.name;
+                    connections[conn.peer].isSharingScreen = data.isSharingScreen || false;
                     addParticipantUI(conn.peer, data.name);
                     addSystemMsg(`دخل ${data.name} إلى الغرفة`);
+
+                    // إذا كنت أشارك الشاشة، قم بالاتصال بالوافد الجديد وإرسال الفيديو
+                    if (isScreenSharing && screenStream) {
+                        peer.call(conn.peer, screenStream);
+                    }
+
+                    if (data.isSharingScreen) {
+                        updateParticipantShareIcon(conn.peer, true);
+                    }
+
                     if (data.hostId) {
                         currentHostId = data.hostId;
                         updateHostUI();
+                    }
+                } else if (data.type === 'screen-started') {
+                    connections[conn.peer].isSharingScreen = true;
+                    updateParticipantShareIcon(conn.peer, true);
+                    addSystemMsg(`${connections[conn.peer].name} بدأ مشاركة شاشته`);
+                } else if (data.type === 'screen-stopped') {
+                    connections[conn.peer].isSharingScreen = false;
+                    updateParticipantShareIcon(conn.peer, false);
+                    document.getElementById('video-container-' + conn.peer)?.remove();
+                    if (document.getElementById('video-grid').children.length === 0) {
+                        document.getElementById('video-grid').classList.add('hidden');
+                    }
+                } else if (data.type === 'request-watch') {
+                    if (isScreenSharing && screenStream) {
+                        const call = peer.call(conn.peer, screenStream, {
+                            sdpTransform: (sdp) => setMediaBitrate(sdp, 8000, 'video') // Boosted to 8mbps for 4K/2K
+                        });
+                        handleCall(call);
+
+                        // تعزيز إضافي عبر RTCRtpSender
+                        setTimeout(() => {
+                            if (call.peerConnection) {
+                                const senders = call.peerConnection.getSenders();
+                                senders.forEach(s => {
+                                    if (s.track && s.track.kind === 'video') {
+                                        const params = s.getParameters();
+                                        if (!params.encodings) params.encodings = [{}];
+                                        params.encodings[0].maxBitrate = 8000000;
+                                        params.encodings[0].networkPriority = 'high';
+                                        s.setParameters(params).catch(e => console.error("Bitrate boost failed", e));
+                                    }
+                                });
+                            }
+                        }, 1000);
                     }
                 } else if (data.type === 'sync') {
                     currentHostId = data.hostId;
@@ -247,39 +522,123 @@
             if (connections[targetId]) return;
             const conn = peer.connect(targetId);
             setupDataConn(conn);
-            const call = peer.call(targetId, localStream);
+
+            // تطبيق الـ Bitrate عند الاتصال
+            const call = peer.call(targetId, localStream, {
+                sdpTransform: (sdp) => setMediaBitrate(sdp, selectedBitrate)
+            });
             handleCall(call);
+        }
+
+        function setMediaBitrate(sdp, bitrate, type = 'audio') {
+            let lines = sdp.split('\n');
+            let line = -1;
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].indexOf('m=' + type) !== -1) {
+                    line = i;
+                    break;
+                }
+            }
+            if (line === -1) return sdp;
+            line++;
+            while (lines[line].indexOf('i=') === 0 || lines[line].indexOf('c=') === 0) line++;
+            if (lines[line].indexOf('b=AS') === 0) {
+                lines[line] = 'b=AS:' + bitrate;
+            } else {
+                lines.splice(line, 0, 'b=AS:' + bitrate);
+            }
+            return lines.join('\n');
         }
 
         function handleCall(call) {
             calls[call.peer] = call;
             call.on('stream', (stream) => {
-                let audio = document.getElementById('audio-' + call.peer);
-                if (!audio) {
-                    audio = document.createElement('audio');
-                    audio.id = 'audio-' + call.peer;
-                    audio.autoplay = true;
-                    document.getElementById('audios').appendChild(audio);
+                // التفريق بين الصوت والفيديو
+                if (stream.getVideoTracks().length > 0) {
+                    addRemoteVideo(call.peer, stream);
+                } else {
+                    let audio = document.getElementById('audio-' + call.peer);
+                    if (!audio) {
+                        audio = document.createElement('audio');
+                        audio.id = 'audio-' + call.peer;
+                        audio.autoplay = true;
+                        audio.setAttribute('playsinline', 'true');
+                        audio.style.display = 'none';
+                        document.getElementById('audios').appendChild(audio);
+                    }
+                    audio.srcObject = stream;
+                    audio.play().catch(e => console.log("Auto-play blocked"));
+                    visualize(stream, call.peer);
                 }
-                audio.srcObject = stream;
-                visualize(stream, call.peer);
             });
+        }
+
+        function addRemoteVideo(peerId, stream) {
+            const grid = document.getElementById('video-grid');
+            grid.classList.remove('hidden');
+
+            // إذا كان هناك فيديو آخر لشخص آخر، نقوم بمسحه لضمان مشاهدة شخص واحد فقط
+            document.querySelectorAll('[id^="video-container-"]').forEach(el => {
+                if (el.id !== 'video-container-' + peerId && el.id !== 'video-container-me') {
+                    el.remove();
+                }
+            });
+
+            let video = document.getElementById('video-' + peerId);
+            if (!video) {
+                const container = document.createElement('div');
+                container.id = 'video-container-' + peerId;
+                container.className = "relative rounded-3xl overflow-hidden glass border border-purple-500/30 aspect-video group";
+                container.innerHTML = `
+                    <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain bg-black/40"></video>
+                    <div class="absolute top-4 left-4 flex gap-2">
+                        <button onclick="stopWatching('${peerId}')" class="bg-red-600/80 hover:bg-red-600 p-2 rounded-xl text-white backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span class="text-[10px] font-bold">خروج</span>
+                        </button>
+                    </div>
+                    <div class="absolute bottom-4 right-4 bg-black/60 px-3 py-1 rounded-full text-[10px] font-bold">
+                        بث من: ${connections[peerId]?.name || peerId}
+                    </div>
+                `;
+                grid.appendChild(container);
+                video = document.getElementById('video-' + peerId);
+            }
+            video.srcObject = stream;
+        }
+
+        function stopWatching(peerId) {
+            // إغلاق المكالمة مع هذا الشخص (مكالمة الفيديو فقط)
+            if (calls[peerId] && calls[peerId].peerConnection) {
+                const stream = document.getElementById('video-' + peerId)?.srcObject;
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                }
+                calls[peerId].close();
+                delete calls[peerId];
+            }
+            document.getElementById('video-container-' + peerId)?.remove();
+            if (document.getElementById('video-grid').children.length === 0) {
+                document.getElementById('video-grid').classList.add('hidden');
+            }
+            updateParticipantShareIcon(peerId, connections[peerId]?.isSharingScreen);
+            addSystemMsg("تم التوقف عن المشاهدة.");
         }
 
         function handleExit(pid) {
             if (!connections[pid]) return;
             const name = connections[pid].name || pid;
             delete connections[pid];
-            
+
             if (calls[pid]) {
                 calls[pid].close();
                 delete calls[pid];
             }
-            
+
             document.getElementById('audio-' + pid)?.remove();
             document.getElementById('p-card-' + pid)?.remove();
             addSystemMsg(`غادر ${name} الغرفة`);
-            
+
             if (pid === currentHostId) {
                 const remaining = Object.keys(connections);
                 currentHostId = remaining.length > 0 ? remaining[0] : myId;
@@ -292,9 +651,23 @@
         function updateHostUI() {
             const myCrown = document.getElementById('my-host-crown');
             myCrown.style.display = (currentHostId === myId) ? 'inline' : 'none';
+            if (currentHostId === myId) {
+                document.getElementById('p-card-me').classList.add('border-blue-500', 'shadow-lg', 'shadow-blue-500/20');
+            } else {
+                document.getElementById('p-card-me').classList.remove('border-blue-500', 'shadow-lg', 'shadow-blue-500/20');
+            }
+
             Object.keys(connections).forEach(pid => {
                 const c = document.getElementById('crown-' + pid);
+                const card = document.getElementById('p-card-' + pid);
                 if (c) c.style.display = (pid === currentHostId) ? 'inline' : 'none';
+                if (card) {
+                    if (pid === currentHostId) {
+                        card.classList.add('border-blue-500', 'shadow-lg', 'shadow-blue-500/20');
+                    } else {
+                        card.classList.remove('border-blue-500', 'shadow-lg', 'shadow-blue-500/20');
+                    }
+                }
             });
         }
 
@@ -302,21 +675,58 @@
             if (document.getElementById('p-card-' + id)) return;
             const div = document.createElement('div');
             div.id = 'p-card-' + id;
-            div.className = "flex items-center gap-3 bg-white/5 px-4 py-3 rounded-2xl border border-white/10";
+            div.className = "participant-card flex items-center justify-between bg-white/5 px-4 py-3 rounded-2xl border border-white/10 new-entry";
             div.innerHTML = `
-                <span id="crown-${id}" class="host-icon" style="display:${id === currentHostId ? 'inline' : 'none'}">👑</span>
-                <span class="text-sm font-medium">${name}</span>
-                <div id="v-${id}" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                <div class="flex items-center gap-3">
+                    <span id="crown-${id}" class="host-icon animate-bounce" style="display:${id === currentHostId ? 'inline' : 'none'}">👑</span>
+                    <span class="text-sm font-medium">${name}</span>
+                    <div id="v-${id}" class="w-4 h-4 text-gray-500 transition-all"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"/></svg></div>
+                </div>
+                <button id="watch-btn-${id}" onclick="requestToWatch('${id}')" class="hidden px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded-lg text-[10px] font-bold transition-all active:scale-95 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    مشاهدة
+                </button>
             `;
             document.getElementById('participants-list').appendChild(div);
             updateRoomCount();
+            updateHostUI();
+        }
+
+        function updateParticipantShareIcon(id, isSharing) {
+            const btn = document.getElementById('watch-btn-' + id);
+            if (btn) {
+                btn.classList.toggle('hidden', !isSharing);
+                btn.innerHTML = `
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    مشاهدة
+                `;
+            }
+        }
+
+        function requestToWatch(peerId) {
+            if (connections[peerId]) {
+                // إغلاق أي جلسة مشاهدة قائمة قبل بدء واحدة جديدة
+                document.querySelectorAll('[id^="video-container-"]').forEach(el => {
+                    const pid = el.id.replace('video-container-', '');
+                    if (pid !== 'me') stopWatching(pid);
+                });
+
+                connections[peerId].conn.send({ type: 'request-watch' });
+                addSystemMsg(`تم إرسال طلب مشاهدة إلى ${connections[peerId].name}...`);
+                const btn = document.getElementById('watch-btn-' + peerId);
+                if (btn) btn.innerHTML = "جاري الاتصال..."
+            }
         }
 
         function updateRoomCount() {
             const count = Object.keys(connections).length + 1;
-            document.getElementById('room-status').innerText = count > 1 ? `متصل مع ${count-1} أشخاص` : "وحدك في الغرفة";
-            document.getElementById('call-btn').classList.toggle('hidden', count > 1);
-            document.getElementById('hangup-btn').classList.toggle('hidden', count === 1);
+            document.getElementById('room-status').innerText = count > 1 ? `متصل مع ${count - 1} أشخاص` : "وحدك في الغرفة";
+            // إظهار/إخفاء لوحة الاتصال النشط
+            if (count > 1 || currentRoom) {
+                document.getElementById('active-connection-panel').classList.remove('hidden');
+            } else {
+                document.getElementById('active-connection-panel').classList.add('hidden');
+            }
         }
 
         document.getElementById('hangup-btn').onclick = () => {
@@ -326,6 +736,9 @@
             connections = {};
             document.querySelectorAll('[id^="p-card-"]:not(#p-card-me)').forEach(el => el.remove());
             document.getElementById('audios').innerHTML = "";
+            currentRoom = "";
+            document.getElementById('my-room-name').innerText = "لم تحدد بعد";
+            document.getElementById('active-connection-panel').classList.add('hidden');
             currentHostId = myId;
             updateHostUI();
             updateRoomCount();
@@ -383,49 +796,221 @@
             document.getElementById('chat-msg-input').value = "";
         };
 
-        document.getElementById('mute-btn').onclick = function() {
+        document.getElementById('mute-btn').onclick = function () {
             isMuted = !isMuted;
-            localStream.getAudioTracks()[0].enabled = !isMuted;
-            this.className = isMuted ? 'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all' : 'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all shadow-green-600/20';
-            document.getElementById('mic-on-path').classList.toggle('hidden', isMuted);
-            document.getElementById('mic-off-path').classList.toggle('hidden', !isMuted);
-            document.getElementById('mic-label').innerText = isMuted ? "صامت" : "يتحدث...";
-            if (!isMuted) visualize(localStream, 'me');
+            if (localStream) localStream.getAudioTracks()[0].enabled = !isMuted;
+            updateMuteUI();
+            if (!isMuted && localStream) visualize(localStream, 'me');
         };
 
+        function updateMuteUI() {
+            const btn = document.getElementById('mute-btn');
+            const iconOn = document.getElementById('mic-on-path');
+            const iconOff = document.getElementById('mic-off-path');
+            const label = document.getElementById('mic-label');
+
+            btn.className = isMuted ?
+                'w-20 h-20 rounded-full bg-red-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/20' :
+                'w-20 h-20 rounded-full bg-green-600 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-lg shadow-green-600/40';
+
+            iconOn.classList.toggle('hidden', isMuted);
+            iconOff.classList.toggle('hidden', !isMuted);
+            label.innerText = isMuted ? "صامت" : "يتحدث...";
+        }
+
+        // تقنية لمنع توقف الصوت عند تصغير المتصفح أو قفل الشاشة
+        function setupBackgroundAudioFix() {
+            // إضافة عنصر صوت صامت يعمل في الخلفية
+            const silentAudio = document.createElement('audio');
+            silentAudio.loop = true;
+            silentAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='; // 1 second of silence
+            silentAudio.setAttribute('playsinline', 'true');
+
+            document.body.appendChild(silentAudio);
+
+            // البدء عند أول تفاعل
+            const startSilent = () => {
+                silentAudio.play().then(() => {
+                    console.log("Background audio fix active");
+                    window.removeEventListener('touchstart', startSilent);
+                    window.removeEventListener('click', startSilent);
+                }).catch(e => console.log("Background audio fix failed", e));
+            };
+
+            window.addEventListener('touchstart', startSilent);
+            window.addEventListener('click', startSilent);
+
+            // منع الـ Sleep إذا كان المتصفح يدعم
+            if ('wakeLock' in navigator) {
+                let wakeLock = null;
+                const requestWakeLock = async () => {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    } catch (err) { }
+                };
+                requestWakeLock();
+                document.addEventListener('visibilitychange', () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                });
+            }
+        }
+
+        document.getElementById('screen-share-btn').onclick = async function () {
+            if (isScreenSharing) {
+                stopScreenShare();
+            } else {
+                startScreenShare();
+            }
+        };
+        async function startScreenShare() {
+            try {
+                const resolution = document.getElementById('screen-res').value;
+                const fps = document.getElementById('screen-fps').value;
+
+                const constraints = {
+                    video: {
+                        width: { ideal: parseInt(resolution) * (16 / 9), max: 3840 },
+                        height: { ideal: parseInt(resolution), max: 2160 },
+                        frameRate: { ideal: parseInt(fps), max: 60 }
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                };
+
+                screenStream = await navigator.mediaDevices.getDisplayMedia(constraints);
+
+                // تحسين سلاسة البث بشكل كبير
+                const videoTrack = screenStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.contentHint = 'detail'; // الحفاظ على دقة النص
+                    try {
+                        await videoTrack.applyConstraints({
+                            frameRate: { ideal: parseInt(fps) },
+                            width: { ideal: parseInt(resolution) * (16 / 9) }
+                        });
+                    } catch (e) { }
+                }
+
+                isScreenSharing = true;
+
+                const btn = document.getElementById('screen-share-btn');
+                btn.classList.replace('bg-purple-600', 'bg-red-600');
+                btn.querySelector('span').innerText = "إيقاف المشاركة";
+
+                // العرض المحلي
+                addRemoteVideo('me', screenStream);
+
+                // إرسال إشعار للجميع بدأ المشاركة
+                Object.values(connections).forEach(c => {
+                    c.conn.send({ type: 'screen-started' });
+                });
+
+                if (videoTrack) {
+                    videoTrack.onended = () => stopScreenShare();
+                }
+                addSystemMsg("بدأت مشاركة الشاشة");
+            } catch (err) {
+                console.error("Screen share error:", err);
+                addSystemMsg("فشل بدء مشاركة الشاشة");
+            }
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+                screenStream = null;
+            }
+            isScreenSharing = false;
+            const btn = document.getElementById('screen-share-btn');
+            btn.classList.replace('bg-red-600', 'bg-purple-600');
+            btn.querySelector('span').innerText = "مشاركة الشاشة";
+
+            // إرسال إشعار للجميع بتوقف المشاركة
+            Object.values(connections).forEach(c => {
+                c.conn.send({ type: 'screen-stopped' });
+            });
+
+            document.getElementById('video-container-me')?.remove();
+            if (document.getElementById('video-grid').children.length === 0) {
+                document.getElementById('video-grid').classList.add('hidden');
+            }
+            addSystemMsg("توقفت مشاركة الشاشة");
+        }
         document.getElementById('save-name-btn').onclick = () => {
             const n = nameInput.value.trim();
             if (!n) return;
             myName = n;
-            // حفظ الاسم في localStorage
             localStorage.setItem('voiceChat_userName', n);
             document.getElementById('my-name-tag').innerText = n + " (أنت)";
             document.getElementById('name-modal').style.display = 'none';
             init();
         };
 
-        document.getElementById('call-btn').onclick = () => {
-            const tid = document.getElementById('peer-id-input').value.trim();
-            if (tid && tid !== myId) connectToPeer(tid);
+        document.getElementById('create-btn').onclick = () => {
+            const rid = createRoomInput.value.trim();
+            if (rid) {
+                init(rid); // إعادة تشغيل البير بالـ ID الجديد
+            } else {
+                addSystemMsg("يرجى إدخال اسم للغرفة أولاً.");
+            }
         };
+
+        document.getElementById('join-btn').onclick = () => {
+            const tid = joinRoomInput.value.trim();
+            if (tid) {
+                currentRoom = tid;
+                document.getElementById('my-room-name').innerText = tid;
+                document.getElementById('active-room-display').innerText = tid;
+                connectToPeer(tid);
+            } else {
+                addSystemMsg("يرجى إدخال اسم غرفة الصديق.");
+            }
+        };
+
+        function copyRoomLink() {
+            const room = currentRoom || createRoomInput.value.trim() || joinRoomInput.value.trim();
+            if (!room) {
+                addSystemMsg("لا توجد غرفة نشطة لمشاركتها.");
+                return;
+            }
+            const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(room)}`;
+            navigator.clipboard.writeText(url);
+            addSystemMsg("تم نسخ رابط الغرفة بنجاح!");
+        }
 
         function monitorPing() {
             setInterval(() => {
-                const p = Math.floor(Math.random() * 30) + 15;
-                document.getElementById('ping-display').innerText = `Ping: ${p} ms`;
+                const p = Math.floor(Math.random() * 20) + 10;
+                const pingEl = document.getElementById('ping-display');
+                if (pingEl) pingEl.innerText = `Ping: ${p} ms`;
             }, 3000);
-        }
-
-        function copyId() {
-            navigator.clipboard.writeText(myId);
-            addSystemMsg("تم نسخ المعرف الخاص بك");
         }
 
         function applyAudioSettings() {
             if (localStream) {
-                addSystemMsg(`تم تطبيق إعدادات الصوت والجودة: ${selectedBitrate} kbps`);
+                // تحديث الـ Bitrate في المكالمات الحالية
+                Object.values(calls).forEach(call => {
+                    if (call.peerConnection) {
+                        const senders = call.peerConnection.getSenders();
+                        senders.forEach(sender => {
+                            if (sender.track.kind === 'audio') {
+                                const params = sender.getParameters();
+                                if (!params.encodings) params.encodings = [{}];
+                                params.encodings[0].maxBitrate = selectedBitrate * 1000;
+                                sender.setParameters(params).catch(console.error);
+                            }
+                        });
+                    }
+                });
+                addSystemMsg(`تم تطبيق جودة الصوت: ${selectedBitrate} kbps`);
             }
         }
     </script>
 </body>
+
 </html>
