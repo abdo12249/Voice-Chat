@@ -331,6 +331,7 @@
         let peer, localStream, screenStream, myId, myName = "", currentHostId = "", currentRoom = "";
         let connections = {}, calls = {}, isMuted = false, isScreenSharing = false;
         let selectedBitrate = 128; // default to 128 for better quality on start
+        let audioCtx; // Centralized AudioContext
 
         const bitrateSlider = document.getElementById('bitrate-slider');
         const bitrateVal = document.getElementById('bitrate-val');
@@ -397,9 +398,13 @@
                         { urls: 'stun:stun2.l.google.com:19302' },
                         { urls: 'stun:stun3.l.google.com:19302' },
                         { urls: 'stun:stun4.l.google.com:19302' },
+                        { urls: 'stun:stun.voiparound.com:3478' },
+                        { urls: 'stun:stun.schlund.de:3478' },
+                        { urls: 'stun:stun.stunprotocol.org:3478' },
                         { urls: 'stun:global.stun.twilio.com:3478' }
                     ],
-                    'sdpSemantics': 'unified-plan'
+                    'sdpSemantics': 'unified-plan',
+                    'iceCandidatePoolSize': 10
                 },
                 debug: 1
             });
@@ -423,8 +428,10 @@
             });
 
             peer.on('call', (call) => {
+                // الرد بالميكروفون دائماً لضمان سماع الطرفين لبعضهما
                 call.answer(localStream);
                 handleCall(call);
+                addSystemMsg("تم استقبال اتصال صوّتي...");
             });
 
             peer.on('connection', setupDataConn);
@@ -480,12 +487,11 @@
                     }
                 } else if (data.type === 'request-watch') {
                     if (isScreenSharing && screenStream) {
-                        const call = peer.call(conn.peer, screenStream, {
-                            sdpTransform: (sdp) => setMediaBitrate(sdp, 8000, 'video') // Boosted to 8mbps for 4K/2K
-                        });
+                        // إزالة تحديد السرعة (setMediaBitrate) لجعلها تعتمد على جودة الاتصال التلقائية
+                        const call = peer.call(conn.peer, screenStream);
                         handleCall(call);
 
-                        // تعزيز إضافي عبر RTCRtpSender
+                        // تعزيز الأولوية فقط بدون تحديد سقف للسرعة
                         setTimeout(() => {
                             if (call.peerConnection) {
                                 const senders = call.peerConnection.getSenders();
@@ -493,9 +499,9 @@
                                     if (s.track && s.track.kind === 'video') {
                                         const params = s.getParameters();
                                         if (!params.encodings) params.encodings = [{}];
-                                        params.encodings[0].maxBitrate = 8000000;
                                         params.encodings[0].networkPriority = 'high';
-                                        s.setParameters(params).catch(e => console.error("Bitrate boost failed", e));
+                                        // ترك maxBitrate للمتصفح ليقرر وفقاً للشبكة
+                                        s.setParameters(params).catch(e => console.error("Priority boost failed", e));
                                     }
                                 });
                             }
@@ -746,15 +752,17 @@
         };
 
         function visualize(stream, pid) {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = ctx.createMediaStreamSource(stream);
-            const analyzer = ctx.createAnalyser();
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyzer = audioCtx.createAnalyser();
             analyzer.fftSize = 32;
             source.connect(analyzer);
             const data = new Uint8Array(analyzer.frequencyBinCount);
 
             function check() {
-                if (!calls[pid] && pid !== 'me') {
+                if ((!calls[pid] && pid !== 'me') || (pid === 'me' && isMuted)) {
                     source.disconnect();
                     return;
                 }
